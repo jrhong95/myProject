@@ -1,0 +1,12 @@
+/Users/hong/CSproject/bin/Debug/netcoreapp3.1/CSproject.deps.json
+/Users/hong/CSproject/bin/Debug/netcoreapp3.1/CSproject.runtimeconfig.json
+/Users/hong/CSproject/bin/Debug/netcoreapp3.1/CSproject.runtimeconfig.dev.json
+/Users/hong/CSproject/bin/Debug/netcoreapp3.1/CSproject.dll
+/Users/hong/CSproject/bin/Debug/netcoreapp3.1/CSproject.pdb
+/Users/hong/CSproject/obj/Debug/netcoreapp3.1/CSproject.csprojAssemblyReference.cache
+/Users/hong/CSproject/obj/Debug/netcoreapp3.1/CSproject.csproj.CoreCompileInputs.cache
+/Users/hong/CSproject/obj/Debug/netcoreapp3.1/CSproject.AssemblyInfoInputs.cache
+/Users/hong/CSproject/obj/Debug/netcoreapp3.1/CSproject.AssemblyInfo.cs
+/Users/hong/CSproject/obj/Debug/netcoreapp3.1/CSproject.dll
+/Users/hong/CSproject/obj/Debug/netcoreapp3.1/CSproject.pdb
+/Users/hong/CSproject/obj/Debug/netcoreapp3.1/CSproject.genruntimeconfig.cache
