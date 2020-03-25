@@ -4,7 +4,7 @@
         {
             "type": "shell",
             "label": "C bulid",
-            "command": "clang",
+            "command": "gcc",
             "args": [
                 "-g",
                 "${file}",
@@ -17,10 +17,17 @@
             "presentation": {
                 "clear": true
             },
-            "group": {
-                "kind": "build",
-                "isDefault": true
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "type": "shell",
+            "label": "Make",
+            "command": "make",
+            "presentation": {
+                "clear": true
             },
+            "group": "build",
             "problemMatcher": []
         },
         {
@@ -66,6 +73,10 @@
             ],
             "options": {
                 "cwd": "/usr/bin"
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
             }
         }
     ]

@@ -1,5 +1,8 @@
 #include "hw1.h"
 
-void main(){
-
+int main(){
+    int i = 0;
+    Init();
+    printf("MAIN\n");
+    return 0;
 }
