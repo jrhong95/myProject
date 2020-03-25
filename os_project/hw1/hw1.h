@@ -27,14 +27,15 @@ typedef struct __HashTableEnt
 HashTableEnt pHashTableEnt[HASH_TBL_SIZE];
 
 
-Object*  pFreeListHead = NULL;
-Object*  ppFreeListTail = NULL;
+Object*  pFreeListHead;
+Object*  pFreeListTail;
 
 
 void Init();
 void InsertObjectToTail(Object* pObj, int ObjNum);
 void InsertObjectToHead(Object* pObj, int objNum);
 Object* GetObjectByNum(int objnum);
+Object* GetObjectFromObjFreeList();
 BOOL DeleteObject(Object* pObj);
 void InsertObjectIntoObjFreeList(Object* pObj);
 
