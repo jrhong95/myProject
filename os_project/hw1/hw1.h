@@ -39,5 +39,4 @@ Object* GetObjectFromObjFreeList();
 BOOL DeleteObject(Object* pObj);
 void InsertObjectIntoObjFreeList(Object* pObj);
 
-void PrintHashTable();
 #endif
