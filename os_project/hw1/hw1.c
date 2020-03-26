@@ -26,28 +26,52 @@ void InsertObjectToTail(Object* pObj, int ObjNum){
         pObj->phNext = NULL;
         pObj->phPrev = NULL;
     }
-    else if(pHashTableEnt[num].pTail != NULL){
-        // pTail 있는경우
-        // pTail 가리키는 obj부터 next가 null이 될 때까지 이동
-        Object *cur = pHashTableEnt[num].pTail;
-        while(cur->phNext != NULL){
-            cur = cur->phNext;
-        }
-        cur->phNext = pObj;
-        pObj->phPrev = cur;
-        pObj->phNext = NULL;
+    else{
+        //obj next prev변경
+        //pTail 변경
         pHashTableEnt[num].elmtCount++;  //+1 count
-
-        pHashTableEnt[num].pTail = pObj; //Tail 변경
+        pObj->phPrev = pHashTableEnt[num].pTail;
+        pObj->phNext = NULL;
+        pHashTableEnt[num].pTail = pObj; //tail change
     }
 }
 
 void InsertObjectToHead(Object* pObj, int objNum){
+    // Object가 삽입 될 위치 저장
+    int num = objNum % HASH_TBL_SIZE;
 
+    // 그 위치가 비어있을 경우
+    if(pHashTableEnt[num].pHead == NULL){
+        pHashTableEnt[num].pHead = pObj; //insert to head
+        pHashTableEnt[num].pTail = pObj; //Head and Tail same
+        pHashTableEnt[num].elmtCount++;  //+1 count
+
+        pObj->phNext = NULL;
+        pObj->phPrev = NULL;
+    }
+    else{
+        //pHead를 변경
+        //obj next prev변경
+        pHashTableEnt[num].elmtCount++;  //+1 count
+        pObj->phPrev = NULL;
+        pObj->phNext = pHashTableEnt[num].pHead;
+        pHashTableEnt[num].pHead = pObj; //head change
+    }
 }
 
 Object* GetObjectByNum(int objnum){    
+    int num = objnum % HASH_TBL_SIZE;
+    Object *cur = pHashTableEnt[num].pHead;
 
+    while(cur != NULL){
+        if(cur->objnum == objnum)
+            return cur;
+        else
+            cur = cur->phNext;
+    }
+
+    printf("%d is not exist!\n", objnum);
+    return NULL;
 }
 
 Object* GetObjectFromObjFreeList(){
@@ -55,7 +79,8 @@ Object* GetObjectFromObjFreeList(){
 }
 
 BOOL DeleteObject(Object* pObj){
-
+    int num = pObj->objnum % HASH_TBL_SIZE;
+    
 }
 
 void InsertObjectIntoObjFreeList(Object* pObj){
