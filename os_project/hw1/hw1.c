@@ -61,7 +61,7 @@ void InsertObjectToHead(Object* pObj, int objNum){
 
 Object* GetObjectByNum(int objnum){    
     int num = objnum % HASH_TBL_SIZE;
-    Object *cur = pHashTableEnt[num].pHead;
+    Object* cur = pHashTableEnt[num].pHead;
 
     while(cur != NULL){
         if(cur->objnum == objnum)
@@ -80,7 +80,19 @@ Object* GetObjectFromObjFreeList(){
 
 BOOL DeleteObject(Object* pObj){
     int num = pObj->objnum % HASH_TBL_SIZE;
-    
+    Object* cur = pHashTableEnt[num].pHead;
+
+    while(cur != NULL){
+        if(cur->objnum == pObj->objnum){
+            //head인 경우, tail인 경우, 둘 다 아닌경우
+            //
+            if(cur->objnum == pHashTableEnt[num].pHead->objnum){
+                
+            }
+        }
+        else
+            cur = cur->phNext;
+    }
 }
 
 void InsertObjectIntoObjFreeList(Object* pObj){
