@@ -25,6 +25,7 @@ void InsertObjectToTail(Object* pObj, int ObjNum){
 
         pObj->phNext = NULL;
         pObj->phPrev = NULL;
+        pObj->objnum = ObjNum;
     }
     else{
         //obj next prev변경
@@ -34,6 +35,7 @@ void InsertObjectToTail(Object* pObj, int ObjNum){
         pObj->phPrev = pHashTableEnt[num].pTail;
         pObj->phNext = NULL;
         pHashTableEnt[num].pTail = pObj;
+        pObj->objnum = ObjNum;
     }
 }
 
@@ -49,6 +51,7 @@ void InsertObjectToHead(Object* pObj, int objNum){
 
         pObj->phNext = NULL;
         pObj->phPrev = NULL;
+        pObj->objnum = objNum;
     }
     else{
         pHashTableEnt[num].elmtCount++;  //+1 count
@@ -56,6 +59,7 @@ void InsertObjectToHead(Object* pObj, int objNum){
         pObj->phNext = pHashTableEnt[num].pHead;
         pObj->phPrev = NULL;
         pHashTableEnt[num].pHead = pObj;
+        pObj->objnum = objNum;
     }
 }
 
@@ -121,11 +125,40 @@ BOOL DeleteObject(Object* pObj){
     printf("This object is not exist!\n");
     return 1;
 }
-
+// double linkedlist
 Object* GetObjectFromObjFreeList(){
+    //In list one Node
+    //more than 2
+    //list empty
+    if(pFreeListHead == NULL && pFreeListTail == NULL)
+        return NULL;
+    if(pFreeListHead == pFreeListTail){
+        Object* temp = pFreeListTail;
+        pFreeListHead = NULL;
+        pFreeListTail = NULL;
+        return temp;
+    }
+    else{
+        Object* temp = pFreeListTail;
+        pFreeListTail = pFreeListTail->phPrev;
+        temp->phPrev->phNext = NULL;
+        temp->phPrev = NULL;
 
+        return temp;
+    }
 }
-
+// double linkedlist
 void InsertObjectIntoObjFreeList(Object* pObj){
-
+    //If List is Empty
+    if(pFreeListHead == NULL){
+        pFreeListHead = pObj;
+        pFreeListTail = pObj;
+        pObj->phNext = NULL;
+        pObj->phPrev = NULL;
+    }
+    else{//insert to Head
+        pObj->phNext = pFreeListHead;
+        pFreeListHead->phPrev = pObj;
+        pFreeListHead = pObj;
+    }
 }
