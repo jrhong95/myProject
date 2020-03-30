@@ -1,23 +1,22 @@
 #include "hw1.h"
 
 void Init(){
-    // pHashTableEnt 초기화
+    // pHashTableEnt reset
     int i;
     for(i = 0; i < HASH_TBL_SIZE; i++){
         pHashTableEnt[i].elmtCount = 0;
         pHashTableEnt[i].pHead = NULL;
         pHashTableEnt[i].pTail = NULL;
     }
-    // Freelist 초기화
+    // Freelist reset
     pFreeListHead = NULL;
     pFreeListTail = NULL;
 }
 
 void InsertObjectToTail(Object* pObj, int ObjNum){
-    // Object가 삽입 될 위치 저장
-    int num = ObjNum % HASH_TBL_SIZE;
+    int num = ObjNum % HASH_TBL_SIZE;    //get address where obj is saved
 
-    // 그 위치가 비어있을 경우
+    // hashtable is empty
     if(pHashTableEnt[num].pHead == NULL){
         pHashTableEnt[num].pHead = pObj; //insert to head
         pHashTableEnt[num].pTail = pObj; //Head and Tail same
@@ -28,8 +27,8 @@ void InsertObjectToTail(Object* pObj, int ObjNum){
         pObj->objnum = ObjNum;
     }
     else{
-        //obj next prev변경
-        //pTail 변경
+        //obj next prev change
+        //pTail change
         pHashTableEnt[num].elmtCount++;  //+1 count
         pHashTableEnt[num].pTail->phNext = pObj;
         pObj->phPrev = pHashTableEnt[num].pTail;
@@ -54,7 +53,7 @@ void InsertObjectToHead(Object* pObj, int objNum){
         pObj->objnum = objNum;
     }
     else{
-        pHashTableEnt[num].elmtCount++;  //+1 count
+        pHashTableEnt[num].elmtCount++; 
         pHashTableEnt[num].pHead->phPrev = pObj;
         pObj->phNext = pHashTableEnt[num].pHead;
         pObj->phPrev = NULL;
@@ -73,7 +72,7 @@ Object* GetObjectByNum(int objnum){
         else
             cur = cur->phNext;
     }
-
+    // objnum is not exist
     printf("%d is not exist!\n", objnum);
     return NULL;
 }
@@ -84,7 +83,7 @@ BOOL DeleteObject(Object* pObj){
 
     while(cur != NULL){
         if(cur->objnum == pObj->objnum){
-            //하나만 있는경우
+            //case 1: 1 obj in hashtable
             if(pHashTableEnt[num].elmtCount == 1){
                 pHashTableEnt[num].pHead = NULL;
                 pHashTableEnt[num].pTail = NULL;
@@ -92,7 +91,7 @@ BOOL DeleteObject(Object* pObj){
                 free(cur);
                 return 0;
             }
-            //head 인 경우
+            //case 2: obj is head
             else if(cur->objnum == pHashTableEnt[num].pHead->objnum){
                 cur->phNext->phPrev = NULL;
                 pHashTableEnt[num].pHead = cur->phNext;
@@ -100,7 +99,7 @@ BOOL DeleteObject(Object* pObj){
                 free(cur);
                 return 0;
             }
-            //tail인 경우
+            //case 3: obj is tail
             else if(cur->objnum == pHashTableEnt[num].pTail->objnum){
                 cur->phPrev->phNext = NULL;
                 pHashTableEnt[num].pTail = cur->phPrev;
@@ -108,7 +107,7 @@ BOOL DeleteObject(Object* pObj){
                 free(cur);
                 return 0;
             }
-            //둘 다 아닌경우
+            //case 4: not head and tail
             else{
                 cur->phNext->phPrev = cur->phPrev;
                 cur->phPrev->phNext = cur->phNext;
@@ -121,23 +120,23 @@ BOOL DeleteObject(Object* pObj){
         else
             cur = cur->phNext; //move next node
     }
-
+    // if pObj is not exist
     printf("This object is not exist!\n");
     return 1;
 }
 // double linkedlist
 Object* GetObjectFromObjFreeList(){
-    //In list one Node
-    //more than 2
     //list empty
     if(pFreeListHead == NULL && pFreeListTail == NULL)
         return NULL;
+    //In list one Node
     if(pFreeListHead == pFreeListTail){
         Object* temp = pFreeListTail;
         pFreeListHead = NULL;
         pFreeListTail = NULL;
         return temp;
     }
+    //more than 2 obj
     else{
         Object* temp = pFreeListTail;
         pFreeListTail = pFreeListTail->phPrev;
