@@ -1,4 +1,5 @@
 #include "hw1.h"
+#include <stdlib.h>
 
 void Init(){
     // pHashTableEnt reset

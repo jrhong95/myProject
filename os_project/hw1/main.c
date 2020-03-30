@@ -48,6 +48,14 @@ int main(){
     pObj->objnum = 10;
     InsertObjectToTail(pObj, 10);
     PrintHashTable();
+    PrintFreeList();
+    pObj = GetObjectFromObjFreeList();
+    InsertObjectToHead(pObj, 11);
+    PrintHashTable();
+    PrintFreeList();
+    pObj = GetObjectFromObjFreeList();
+    InsertObjectToHead(pObj, 2);
+    PrintHashTable();
 
     PrintFreeList();
 
