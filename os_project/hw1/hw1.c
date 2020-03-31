@@ -40,10 +40,9 @@ void InsertObjectToTail(Object* pObj, int ObjNum){
 }
 
 void InsertObjectToHead(Object* pObj, int objNum){
-    // Object가 삽입 될 위치 저장
     int num = objNum % HASH_TBL_SIZE;
 
-    // 그 위치가 비어있을 경우
+    // HashTable is empty
     if(pHashTableEnt[num].pHead == NULL){
         pHashTableEnt[num].pHead = pObj; //insert to head
         pHashTableEnt[num].pTail = pObj; //Head and Tail same
@@ -74,7 +73,6 @@ Object* GetObjectByNum(int objnum){
             cur = cur->phNext;
     }
     // objnum is not exist
-    printf("%d is not exist!\n", objnum);
     return NULL;
 }
 
@@ -83,7 +81,7 @@ BOOL DeleteObject(Object* pObj){
     Object* cur = pHashTableEnt[num].pHead;
 
     while(cur != NULL){
-        if(cur->objnum == pObj->objnum){
+        if(cur == pObj){
             //case 1: 1 obj in hashtable
             if(pHashTableEnt[num].elmtCount == 1){
                 pHashTableEnt[num].pHead = NULL;
@@ -93,7 +91,7 @@ BOOL DeleteObject(Object* pObj){
                 return 0;
             }
             //case 2: obj is head
-            else if(cur->objnum == pHashTableEnt[num].pHead->objnum){
+            else if(cur == pHashTableEnt[num].pHead){
                 cur->phNext->phPrev = NULL;
                 pHashTableEnt[num].pHead = cur->phNext;
                 pHashTableEnt[num].elmtCount--;
@@ -101,7 +99,7 @@ BOOL DeleteObject(Object* pObj){
                 return 0;
             }
             //case 3: obj is tail
-            else if(cur->objnum == pHashTableEnt[num].pTail->objnum){
+            else if(cur == pHashTableEnt[num].pTail){
                 cur->phPrev->phNext = NULL;
                 pHashTableEnt[num].pTail = cur->phPrev;
                 pHashTableEnt[num].elmtCount--;
@@ -122,14 +120,17 @@ BOOL DeleteObject(Object* pObj){
             cur = cur->phNext; //move next node
     }
     // if pObj is not exist
-    printf("This object is not exist!\n");
+    printf("This object is not exist! Can't Delete\n");
     return 1;
 }
 // double linkedlist
 Object* GetObjectFromObjFreeList(){
     //list empty
-    if(pFreeListHead == NULL && pFreeListTail == NULL)
+    //printf("List init\n head: %p  Tail: %p\n", pFreeListHead, pFreeListTail);
+    if((pFreeListHead == NULL) && (pFreeListTail == NULL)){
+        printf("FreeList is NULL\nhead: %p  Tail: %p\n", pFreeListHead, pFreeListTail);
         return NULL;
+    }
     //In list one Node
     if(pFreeListHead == pFreeListTail){
         Object* temp = pFreeListTail;
@@ -155,6 +156,7 @@ void InsertObjectIntoObjFreeList(Object* pObj){
         pFreeListTail = pObj;
         pObj->phNext = NULL;
         pObj->phPrev = NULL;
+        
     }
     else{//insert to Head
         pObj->phNext = pFreeListHead;

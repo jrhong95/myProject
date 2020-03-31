@@ -1,113 +1,83 @@
 #include "hw1.h"
+#include <malloc.h>
 
-void PrintHashTable();
-void PrintFreeList();
-void Print();
-void InitFreeList();
+#define INSERT_OBJECT_SIZE (48)
 
-/* int main(){
-    int i, num = 0;
-    Object* pObj;
+void InitFreeList(){
 
-    printf("Main start\n");
-    Init();
-    
-    for(i = 0; i <  20; i++){
-        pObj = (Object*)malloc(sizeof(Object));
-        pObj->objnum = i;
+    int i;
+    Object* pObject;
 
-        //printf("%d ", i);
-        if(i % 2 == 0)
-            InsertObjectToHead(pObj, pObj->objnum);
-        else
-            InsertObjectToTail(pObj, pObj->objnum);
-        
+    for(i=0;i<INSERT_OBJECT_SIZE;i++){
+        pObject=(Object*)malloc(sizeof(Object));
+        pObject->objnum=OBJ_INVALID;
+        InsertObjectIntoObjFreeList(pObject);
     }
-    Print(); 
-    printf("==================================\n");
-    while(num != -1){
-        printf("Delete Number?? ");
-        scanf("%d", &num);
+}
 
-        if(GetObjectByNum(num) != NULL){
-            DeleteObject(GetObjectByNum(num));
+void printHashTable(){
+
+    int i,j;
+
+    printf("-----------HashTable-----------\n");
+
+    for(i=0;i<HASH_TBL_SIZE;i++){
+        printf("index: %d |",i);
+
+        Object* temp=pHashTableEnt[i].pHead;
+        for(j=0;j<pHashTableEnt[i].elmtCount;j++){
+            printf(" %d",temp->objnum);
+            temp=temp->phNext;
         }
-        PrintHashTable();
-        printf("==================================\n");
+        printf("\n");
     }
-    return 0;
-} */
-int main(){
-    Object* pObj = NULL;
+}
+
+void DeleteProcess(int idx){
+    Object* temp=GetObjectByNum(idx);
+	DeleteObject(temp);
+	temp->objnum = OBJ_INVALID;
+	InsertObjectIntoObjFreeList(temp);
+}
+
+void main(){
+
+    int i;
 
     Init();
     InitFreeList();
-    PrintFreeList();
 
-    pObj = GetObjectFromObjFreeList();
-    pObj->objnum = 10;
-    InsertObjectToTail(pObj, 10);
-    PrintHashTable();
-    PrintFreeList();
-    pObj = GetObjectFromObjFreeList();
-    InsertObjectToHead(pObj, 11);
-    PrintHashTable();
-    PrintFreeList();
-    pObj = GetObjectFromObjFreeList();
-    InsertObjectToHead(pObj, 2);
-    PrintHashTable();
-
-    PrintFreeList();
-
-    return 0;
-}
-
-
-void PrintHashTable(){
-    int i;
-    Object* cur;
-    for(i = 0; i < HASH_TBL_SIZE; i++){
-        printf("HashTable[%d] :", i);
-        if(pHashTableEnt[i].pHead != NULL){
-            cur = pHashTableEnt[i].pHead;
-            while(cur != NULL){
-                printf("%d ", cur->objnum);
-                cur = cur->phNext;
-            }
-            //printf("   total: %d  {Head: %d Tail: %d}\n", pHashTableEnt[i].elmtCount, pHashTableEnt[i].pHead->objnum, pHashTableEnt[i].pTail->objnum);
-            printf("   total: %d  {Head: %d Tail: %d} Head: 0x%p Tail: 0x%p\n", pHashTableEnt[i].elmtCount, pHashTableEnt[i].pHead->objnum, pHashTableEnt[i].pTail->objnum, pHashTableEnt[i].pHead, pHashTableEnt[i].pTail);
-        }
+    //testcase1
+    for(i=0;i<INSERT_OBJECT_SIZE;i++){
+        if(i%2==0)
+            InsertObjectToTail(GetObjectFromObjFreeList(),i);
         else
-            printf("   total: %d  {Head: NULL Tail: NULL}\n", pHashTableEnt[i].elmtCount);
-        
-    }
-}
-
-void PrintFreeList(){
-    Object* cur = pFreeListHead;
-    while(cur != NULL){
-        printf("[%d]", cur->objnum);
-        cur = cur->phNext;
-        if(cur != NULL)
-            printf(" - ");
+            InsertObjectToHead(GetObjectFromObjFreeList(),i);
     }
 
-    printf("\n");
-    printf("Head: 0x%p Tail: 0x%p\n=====================\n\n", pFreeListHead, pFreeListTail);
-}
+    printf("case1) Insert Input\n");
+    printHashTable();
 
-void Print(){
-    PrintHashTable();
-    PrintFreeList();
-}
+    for(i=0;i<INSERT_OBJECT_SIZE;i++){
+        DeleteProcess(i);
+    }
 
-void InitFreeList() {
-	int i;
-	Object* pObject;
-	for (i = 0; i < 20; i++) {
-		pObject = (Object*)malloc(sizeof(Object));
-		pObject->objnum = i;
-		InsertObjectIntoObjFreeList(pObject);
-	}
-}
+    printf("case1) Delete All\n");
+    printHashTable();
 
+    //testcase2
+    for(i=0;i<INSERT_OBJECT_SIZE;i++){
+        InsertObjectToTail(GetObjectFromObjFreeList(),i);
+    }
+
+    for(i=8;i<16;i++){
+        DeleteProcess(i);
+        InsertObjectToHead(GetObjectFromObjFreeList(),i);
+    }
+    for(i=32;i<40;i++){
+        DeleteProcess(i);
+        InsertObjectToHead(GetObjectFromObjFreeList(),i);
+    }
+    printf("case2)\n");
+    printHashTable();
+}
