@@ -1,5 +1,5 @@
 CC = gcc
-TARGET = main
+TARGET = 2015726096
 
 $(TARGET) : main.o hw1.o
 	$(CC) -o $(TARGET) main.o hw1.o
