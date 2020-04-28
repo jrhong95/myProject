@@ -30,7 +30,7 @@ typedef struct _Thread{
 	ThreadStatus	status;
 	int		exitCode;
 	pid_t		pid;
-	int		priority;
+	int		priority;  // ReadyQueue Entry
 	Thread*		phNext;
 	Thread*		phPrev;
 } Thread;
@@ -60,7 +60,8 @@ int 		thread_suspend(thread_t tid);
 int 		thread_cancel(thread_t tid);
 int		thread_resume(thread_t tid);
 thread_t 	thread_self();
-
+int thread_join(thread_t tid, void** retval);
+int thread_exit(void* retval);
 
 #endif /* __THREAD_H__ */
 
