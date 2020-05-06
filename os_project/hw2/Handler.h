@@ -7,5 +7,4 @@
 #include "Queue.h"
 
 void RR_handler(int sig);
-void hand1(int sig);
 #endif

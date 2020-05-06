@@ -8,13 +8,16 @@
 #include "Scheduler.h"
 
 void InsertToReadyQueue(Thread *tcb);
-Thread* DeleleToReadyQueue(int priority);
+Thread* DeleleToReadyQueue(int priority, pid_t pid);
 
 void InsertToWaitQueue(Thread *tcb);
-Thread* DeleteToWaitQueue();
+Thread* DeleteToWaitQueueHead();
+Thread* DeleteToWaitQueue(pid_t pid);
 
 int IsReadyQueueEmpty();
 Thread* FindNextinReadyQueue();
 
 thread_t TableSearch_tid(pid_t pid);
+void PrintReadyQueue();
+void PrintWaitQueue();
 #endif /* __QUEUE_H__ */

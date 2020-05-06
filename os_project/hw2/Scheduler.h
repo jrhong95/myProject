@@ -6,7 +6,7 @@
 int	RunScheduler( void );
 void	__ContextSwitch(int curpid, int newpid);
 
-Thread* pCurrentThead;
+Thread* pCurrentThread;
 
 #endif
 

@@ -24,12 +24,48 @@ void InsertToReadyQueue(Thread *ptcb){ //Insert to Tail
     ptcb->status = THREAD_STATUS_READY;
 }
 
-Thread* DeleleToReadyQueue(int priority){ //Delete Head
+Thread* DeleleToReadyQueue(int priority, pid_t pid){ //pid == 0, Delete Head
+                                                     //pid != 0, Delete pid
     if(pReadyQueueEnt[priority].pHead == NULL){ //Head is null
         printf("Priority: [%d] is Empty\n", priority);
         return NULL;
     }
+    if(pid != 0){   //Delete pid tcb
+        Thread* cur = pReadyQueueEnt[priority].pHead;
+        while(cur != NULL){
+            if(cur->pid == pid){
+                if(pReadyQueueEnt[priority].pHead == pReadyQueueEnt[priority].pTail){    
+                    // 1 Node in ReadyQueue
+                    pReadyQueueEnt[priority].pHead = NULL;
+                    pReadyQueueEnt[priority].pTail = NULL;
+                    pReadyQueueEnt[priority].queueCount--;
+                    return cur;
+                }
 
+                if(cur == pReadyQueueEnt[priority].pHead){
+                    pReadyQueueEnt[priority].pHead = cur->phNext;
+                    pReadyQueueEnt[priority].pHead->phPrev = NULL;
+                    cur->phNext = NULL;
+                    pReadyQueueEnt[priority].queueCount--;
+                    return cur;
+                }
+                else if(cur == pReadyQueueEnt[priority].pTail){
+                    pReadyQueueEnt[priority].pTail = cur->phPrev;
+                    pReadyQueueEnt[priority].pTail->phNext = NULL;
+                    cur->phPrev = NULL;
+                    pReadyQueueEnt[priority].queueCount--;
+                    return cur;
+                }
+                else{
+                    cur->phNext->phPrev = cur->phPrev;
+                    cur->phPrev->phNext = cur->phNext;
+                    pReadyQueueEnt[priority].queueCount--;
+                    return cur;
+                }
+            }
+            cur = cur->phNext;
+        }
+    }
     if(pReadyQueueEnt[priority].queueCount == 1){ //ReadyQueue count is 1
         Thread* tmptcb = pReadyQueueEnt[priority].pHead;
 
@@ -57,16 +93,56 @@ void InsertToWaitQueue(Thread *tcb){
         pWaitingQueueTail = tcb;
         tcb->phNext = NULL;
         tcb->phPrev = NULL;
-        
+        tcb->status = THREAD_STATUS_WAIT;
     }
-    else{//insert to Head
-        tcb->phNext = pWaitingQueueHead;
-        pWaitingQueueHead->phPrev = tcb;
-        pWaitingQueueHead = tcb;
+    else{//insert to Tail
+        tcb->phPrev = pWaitingQueueTail;
+        pWaitingQueueTail->phNext = tcb;
+        pWaitingQueueTail = tcb;
+        tcb->status = THREAD_STATUS_WAIT;
     }
 }
+Thread* DeleteToWaitQueue(pid_t pid){
+    Thread* cur = pWaitingQueueHead;
 
-Thread* DeleteToWaitQueue(){
+    if((pWaitingQueueHead == NULL) && (pWaitingQueueTail == NULL)){
+        return NULL;
+    }
+
+    while(cur != NULL){
+        if(cur->pid == pid){
+            if(pWaitingQueueHead == pWaitingQueueTail){    // 1 Node in WaitQ
+                pWaitingQueueHead = NULL;
+                pWaitingQueueTail = NULL;
+                return cur;
+            }
+
+            if(cur == pWaitingQueueHead){
+                pWaitingQueueHead = cur->phNext;
+                pWaitingQueueHead->phPrev = NULL;
+                cur->phNext = NULL;
+                
+                return cur;
+            }
+            else if(cur == pWaitingQueueTail){
+                pWaitingQueueTail = cur->phPrev;
+                pWaitingQueueTail->phNext = NULL;
+                cur->phPrev = NULL;
+
+                return cur;
+            }
+            else{
+                cur->phNext->phPrev = cur->phPrev;
+                cur->phPrev->phNext = cur->phNext;
+                return cur;
+            }
+        }
+        cur = cur->phNext;
+    }
+
+    return NULL;
+}
+Thread* DeleteToWaitQueueHead(){
     //list empty
     //printf("List init\n head: %p  Tail: %p\n", pWaitingQueueHead, pWaitingQueueTail);
     if((pWaitingQueueHead == NULL) && (pWaitingQueueTail == NULL)){
@@ -81,10 +157,10 @@ Thread* DeleteToWaitQueue(){
     }
     //more than 2
     else{
-        Thread* temp = pWaitingQueueTail;
-        pWaitingQueueTail = pWaitingQueueTail->phPrev;
-        temp->phPrev->phNext = NULL;
-        temp->phPrev = NULL;
+        Thread* temp = pWaitingQueueHead;
+        pWaitingQueueHead = pWaitingQueueHead->phNext;
+        temp->phNext->phPrev = NULL;
+        temp->phNext = NULL;
 
         return temp;
     }
@@ -93,9 +169,12 @@ Thread* DeleteToWaitQueue(){
 int IsReadyQueueEmpty(){
     int i;
     for(i = 0; i < MAX_READYQUEUE_NUM; i++){
-        if(pReadyQueueEnt[i].queueCount != 0)
+        if(pReadyQueueEnt[i].queueCount != 0){
+            //printf("Not Empty\n");
             return 0;
+        }
     }
+    //printf("Empty\n");
     return 1;
 }
 
@@ -103,19 +182,47 @@ Thread* FindNextinReadyQueue(){
     int i;
     for(i = 0; i < MAX_READYQUEUE_NUM; i++){
         if(pReadyQueueEnt[i].pHead != NULL){
-            return DeleleToReadyQueue(i);
+            return DeleleToReadyQueue(i, 0);
         }
     }
     return NULL;
 }
 
-thread_t TableSearch_Thread(pid_t pid)		//tid search in WaitQueue
+thread_t TableSearch_Thread(pid_t pid)		//tid search in TableEntry
 {
     int i;
 	for(i = 0; i < MAX_THREAD_NUM; i++){
-        if(pThreadTbEnt[i].pThread->pid == pid){
+        if(pThreadTblEnt[i].pThread->pid == pid){
             return i;
         }  
     }
 	return -1;
+}
+
+void PrintReadyQueue(){
+    int i, j;
+    if(pCurrentThread !=NULL)
+        printf("=====================================\n[print] Current Running Thread : %d[%d]\n", pCurrentThread->pid, TableSearch_Thread(pCurrentThread->pid));
+    for(i = 0; i < MAX_READYQUEUE_NUM; i++){
+        printf("index: %d |", i);
+
+        Thread* temp= pReadyQueueEnt[i].pHead;
+        for(j = 0 ;j < pReadyQueueEnt[i].queueCount; j++){
+            printf(" %d[%d]",temp->pid, TableSearch_Thread(temp->pid));
+            temp = temp->phNext;
+        }
+        printf("\n");
+    }
+    printf("\n");
+}
+
+void PrintWaitQueue(){
+    Thread* cur = pWaitingQueueHead;
+    printf("\n[print] Waiting Queue : ");
+    while(cur != NULL){
+        printf("%d[%d] status: %d |", cur->pid, TableSearch_Thread(cur->pid), cur->status);
+        cur = cur->phNext;
+    }
+
+    printf("\n==============================================\n");
 }

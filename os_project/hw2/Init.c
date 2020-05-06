@@ -7,8 +7,8 @@ void Init(void)
     int i;
     // pThreadEnt Reset
     for(i = 0; i < MAX_THREAD_NUM; i++){
-        pThreadTbEnt[i].bUsed = 0;
-        pThreadTbEnt[i].pThread = NULL;
+        pThreadTblEnt[i].bUsed = 0;
+        pThreadTblEnt[i].pThread = NULL;
     }
 
     //ReadyQueue Reset
@@ -22,5 +22,5 @@ void Init(void)
     pWaitingQueueHead = NULL;
     pWaitingQueueTail = NULL;
 
-    pCurrentThead = NULL;
+    pCurrentThread = NULL;
 }

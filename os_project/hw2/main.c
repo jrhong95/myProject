@@ -1,54 +1,43 @@
+#include<stdio.h>
+#include<stdlib.h>
+
+#include "TestCase1.h"
+#include "TestCase2.h"
+#include "TestCase3.h"
+
 #include "Init.h"
 #include "Scheduler.h"
 #include "Thread.h"
 
-#include<stdio.h>
+int main(int argc, char* argv[]){
 
-void foo(int arg){
-	int count = 0;
+	int TcNum;
+	thread_t tid1, tid2, tid3, tid4, tid5;
 
-	count = 5;
-	while (count > 0)
-	{
-		/* sleep for 1 seconds */
-		sleep(2);
-		printf("Tc1ThreadProc: my thread id (%ld), arg is (%d)\n",thread_self(), arg);
-		count--;
+	if(argc!=2){
+		perror("Input TestCase Number!");
+		exit(0);
 	}
-}
 
+	Init();
 
-int main(void)
-{
-    thread_t pid1, pid2, pid3, pid4, pid5, pid6;
+	TcNum=atoi(argv[1]);
 
-    Init();
+	switch(TcNum)
+	{
+		case 1:
+			thread_create(&tid1,NULL,0,(void*)TestCase1,0);
+			break;
+		case 2:
+			thread_create(&tid2,NULL,0,(void*)TestCase2,0);
+			break;
+		case 3:
+			thread_create(&tid3,NULL,0,(void*)TestCase3,0);
+			break;
+	}
 
-    thread_create(&pid1, NULL, 0, (void*)foo, (int*)1);
-    thread_create(&pid2, NULL, 1, (void*)foo, (int*)2);
-    thread_create(&pid3, NULL, 0, (void*)foo, (int*)3);
-    thread_create(&pid4, NULL, 1, (void*)foo, (int*)4);
-    thread_create(&pid5, NULL, 2, (void*)foo, (int*)5);
-    thread_create(&pid6, NULL, 3, (void*)foo, (int*)6);
-    //printf("%d %d %d %d %d %d\n\n", pid1, pid2, pid3, pid4, pid5, pid6);
-    PrintReadyQueue();
+	RunScheduler();
 
-    RunScheduler();
-    return 0;
-}
-
-void PrintReadyQueue(){
-    int i, j;
-    
-    //printf("Current Running Thread : %d\n", pCurrentThead->pid);
-    for(i = 0; i < MAX_READYQUEUE_NUM; i++){
-        printf("index: %d |", i);
-
-        Thread* temp= pReadyQueueEnt[i].pHead;
-        for(j = 0 ;j < pReadyQueueEnt[i].queueCount; j++){
-            printf(" %d",temp->pid);
-            temp = temp->phNext;
-        }
-        printf("\n");
-    }
+	while(1){}
+	return 0;
 }

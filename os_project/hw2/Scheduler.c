@@ -6,13 +6,13 @@
 
 int RunScheduler( void )
 {
-    if(pCurrentThead == NULL){
-        pCurrentThead = FindNextinReadyQueue();
-        pCurrentThead->status = THREAD_STATUS_RUN;
+    if(pCurrentThread == NULL){
+        pCurrentThread = FindNextinReadyQueue();
+        pCurrentThread->status = THREAD_STATUS_RUN;
     }
-    printf("Current Running Thread : %d\n", pCurrentThead->pid);
-    kill(pCurrentThead->pid, SIGCONT);
-    //PrintReadyQueue();
+    //printf("[Scheduler] Current Running Thread : %d\n", pCurrentThread->pid);
+    kill(pCurrentThread->pid, SIGCONT);
+
     signal(SIGALRM, (void*)RR_handler);
 	alarm(TIMESLICE);
     while(1);
