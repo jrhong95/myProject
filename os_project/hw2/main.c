@@ -4,6 +4,7 @@
 #include "TestCase1.h"
 #include "TestCase2.h"
 #include "TestCase3.h"
+#include "TestCase4.h"
 
 #include "Init.h"
 #include "Scheduler.h"
@@ -12,7 +13,7 @@
 int main(int argc, char* argv[]){
 
 	int TcNum;
-	thread_t tid1, tid2, tid3, tid4, tid5;
+	thread_t tid1, tid2, tid3, tid4;
 
 	if(argc!=2){
 		perror("Input TestCase Number!");
@@ -33,6 +34,9 @@ int main(int argc, char* argv[]){
 			break;
 		case 3:
 			thread_create(&tid3,NULL,0,(void*)TestCase3,0);
+			break;
+		case 4:
+			thread_create(&tid4,NULL,0,(void*)TestCase4,0);
 			break;
 	}
 

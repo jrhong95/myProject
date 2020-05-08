@@ -5,9 +5,9 @@
 
 
 #define CLONE_FLAG ( CLONE_VM | CLONE_SIGHAND | CLONE_FS | CLONE_FILES | SIGCHLD )
-#define STACK_SIZE ( 1024 * 128 ) //
 
-int flag;
+Thread* parent;
+Thread* child;
 
 int thread_create(thread_t *thread, thread_attr_t *attr, int priority, void *(*start_routine) (void *), void *arg)
 {                 //thread is pThreadTblEnt's index
@@ -39,7 +39,7 @@ int thread_create(thread_t *thread, thread_attr_t *attr, int priority, void *(*s
         if(pThreadTblEnt[i].bUsed == 0){ //Find empty entry
             pThreadTblEnt[i].bUsed = 1;
             *thread = i;                //return thread entry number
-            printf("Thread Create tid[%d] || pid[%d]\n", *thread, pid);
+            //printf("Thread Create tid[%d] || pid[%d]\n", *thread, pid);
             pThreadTblEnt[i].pThread = tcb;
             break;
         }
@@ -108,7 +108,7 @@ int thread_cancel(thread_t tid) //thread id
 int thread_resume(thread_t tid)
 {
     Thread* targetThread = pThreadTblEnt[tid].pThread;
-
+    //printf("Resume\n");
     if(pCurrentThread == NULL){
         DeleteToWaitQueue(targetThread->pid);
         targetThread->status = THREAD_STATUS_RUN;
@@ -116,13 +116,16 @@ int thread_resume(thread_t tid)
         return 0;
     }
     if(targetThread->priority < pCurrentThread->priority){  //context switching running to target
-        InsertToReadyQueue(pCurrentThread);
-        pCurrentThread->status = THREAD_STATUS_READY;
+        Thread* cur = pCurrentThread;
+ 
+        InsertToReadyQueue(cur);
+        cur->status = THREAD_STATUS_READY;
 
         DeleteToWaitQueue(targetThread->pid);
         targetThread->status = THREAD_STATUS_RUN;
-
-        __ContextSwitch(pCurrentThread->pid, targetThread->pid);
+        
+        pCurrentThread = targetThread;
+        __ContextSwitch(cur->pid, pCurrentThread->pid);
         return 0;
     }
     else{                                                   // target move waitQ to readyQ
@@ -152,92 +155,24 @@ thread_t thread_self()
     return 0;
 }
 int join_handler(int sig){
-    flag = 1;
-    //printf("join hanlder %d!\n", getpid());
 }
 
-/* int thread_join(thread_t tid, void** retval){           //wait parent until child exit
-    Thread* child = pThreadTblEnt[tid].pThread;
-    Thread* parent = pThreadTblEnt[TableSearch_Thread(getpid())].pThread;
-    int exitCode = child->exitCode;
-
-    struct sigaction act;
-    act.sa_handler = join_handler;
-    act.sa_flags = SA_NOCLDSTOP;
-
-    //printf("parent: %d\nchild: %d\n", parent->pid, child->pid);
-
-    if(child->status != THREAD_STATUS_ZOMBIE){          //child is not zombie
-        
-        if(parent->status == THREAD_STATUS_READY){
-            // parent In ready Q
-            DeleleToReadyQueue(parent->priority, parent->pid);
-            //printf("[Join] Parent Ready\n");
-            pCurrentThread = FindNextinReadyQueue();
-            InsertToWaitQueue(parent);                  //parent move to waitQ
-            parent->status = THREAD_STATUS_WAIT;
-        }
-        else if(parent->status == THREAD_STATUS_RUN){
-            //printf("[Join] Parent RUN\n");
-            pCurrentThread = NULL;
-            //printf("Join================\n");
-            //PrintReadyQueue();
-            InsertToWaitQueue(parent);                  //parent move to waitQ
-            parent->status = THREAD_STATUS_WAIT;
-            //printf("Parent move to waitQ================\n");
-            //PrintReadyQueue();
-        }
-
-        flag = 0;
-        sigaction (SIGCHLD, &act, NULL);
-        while(!flag);                                   //parent wait until get SIGCHLD
-        flag = 0;
-        //printf("while finish\n");
-        DeleteToWaitQueue(parent->pid);
-        //printf("move to ready\n");
-        InsertToReadyQueue(parent);
-        parent->status = THREAD_STATUS_READY;
-    }
-
-    *retval = &exitCode;
-    DeleteToWaitQueue(child->pid);
-
-    pThreadTblEnt[tid].bUsed = 0;
-    pThreadTblEnt[tid].pThread = NULL;
-
-    free(child->stackAddr);
-    free(child);
-    
-    return 0;
-} */
-
-int thread_join(thread_t tid, void** retval){
-    Thread* child = pThreadTblEnt[tid].pThread;
-    Thread* parent = pThreadTblEnt[TableSearch_Thread(getpid())].pThread;
-    int exitCode = child->exitCode;
+int thread_join(thread_t tid, void** retval)
+{
+    parent = pThreadTblEnt[TableSearch_Thread(getpid())].pThread;
+    child = pThreadTblEnt[tid].pThread;
+    int exitCode;
 
     struct sigaction act;
     act.sa_handler = join_handler;
     act.sa_flags = SA_NOCLDSTOP;
 
     if(child->status != THREAD_STATUS_ZOMBIE){          //child is not zombie
-        if(parent->status == THREAD_STATUS_READY){
-            // parent In ready Q
-            DeleleToReadyQueue(parent->priority, parent->pid);
-            printf("[Join] Parent Ready\n");
-            pCurrentThread = FindNextinReadyQueue();
-            InsertToWaitQueue(parent);                  //parent move to waitQ
-            parent->status = THREAD_STATUS_WAIT;
-        }
-        else if(parent->status == THREAD_STATUS_RUN){
-            printf("[Join] Parent RUN\n");
+
+        if(parent->status == THREAD_STATUS_RUN){
             pCurrentThread = NULL;
-            //printf("Join================\n");
-            //PrintReadyQueue();
             InsertToWaitQueue(parent);                  //parent move to waitQ
             parent->status = THREAD_STATUS_WAIT;
-            //printf("Parent move to waitQ================\n");
-            //PrintReadyQueue();
         }
 
         if(IsReadyQueueEmpty()){
@@ -245,19 +180,19 @@ int thread_join(thread_t tid, void** retval){
         }
         else{
             pCurrentThread = FindNextinReadyQueue();
-            pCurrentThread->status = THREAD_STATUS_RUN;
-
             kill(pCurrentThread->pid, SIGCONT);
-            flag = 0;
+            
             sigaction (SIGCHLD, &act, NULL);
-            while(!flag);                       //parent wait until get SIGCHLD
-
+            pause();                       //parent wait until get SIGCHLD
+        
             DeleteToWaitQueue(parent->pid);
             InsertToReadyQueue(parent);
             parent->status = THREAD_STATUS_READY;
+            kill(parent->pid, SIGSTOP);
         }
     }
-
+//1이 끝나면, sigchld발생, 핸들러로 들어가서 join마무리, 부모스레드 레디큐로 들어감.
+    exitCode = child->exitCode;
     *retval = &exitCode;
     DeleteToWaitQueue(child->pid);
 
@@ -266,18 +201,16 @@ int thread_join(thread_t tid, void** retval){
 
     free(child->stackAddr);
     free(child);
-    
     return 0;
 }
 
 
 int thread_exit(void* retval){
-    Thread* target = pCurrentThread;
+    Thread* target = pThreadTblEnt[TableSearch_Thread(getpid())].pThread;
     target->exitCode = *((int*)retval);
-    //printf("target->pid = %d, exit[%d]\n", target->pid, target->exitCode);
+    
     InsertToWaitQueue(target);
     target->status = THREAD_STATUS_ZOMBIE;
-    //printf("Thread[%d] is exit\n", TableSearch_Thread(getpid()));
 
     if(IsReadyQueueEmpty()){
         pCurrentThread = NULL;

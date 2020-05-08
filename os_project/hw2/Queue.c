@@ -166,7 +166,7 @@ Thread* DeleteToWaitQueueHead(){
     }
 }
 
-int IsReadyQueueEmpty(){
+int IsReadyQueueEmpty(){ //not empty: 0, empty: 1
     int i;
     for(i = 0; i < MAX_READYQUEUE_NUM; i++){
         if(pReadyQueueEnt[i].queueCount != 0){
@@ -192,7 +192,7 @@ thread_t TableSearch_Thread(pid_t pid)		//tid search in TableEntry
 {
     int i;
 	for(i = 0; i < MAX_THREAD_NUM; i++){
-        if(pThreadTblEnt[i].pThread->pid == pid){
+        if(pThreadTblEnt[i].pThread != NULL && pThreadTblEnt[i].pThread->pid == pid){
             return i;
         }  
     }
@@ -204,7 +204,7 @@ void PrintReadyQueue(){
     if(pCurrentThread !=NULL)
         printf("=====================================\n[print] Current Running Thread : %d[%d]\n", pCurrentThread->pid, TableSearch_Thread(pCurrentThread->pid));
     for(i = 0; i < MAX_READYQUEUE_NUM; i++){
-        printf("index: %d |", i);
+        printf("index: %d [%d]|", i, pReadyQueueEnt[i].queueCount);
 
         Thread* temp= pReadyQueueEnt[i].pHead;
         for(j = 0 ;j < pReadyQueueEnt[i].queueCount; j++){

@@ -3,6 +3,7 @@
 
 #define _GNU_SOURCE
 
+#include <stdio.h>
 #include "Thread.h"
 #include "Init.h"
 #include "Scheduler.h"

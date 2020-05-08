@@ -1,5 +1,4 @@
 #include "TestCase1.h"
-#include "Queue.h"
 
 void* Tc1ThreadProc(void* param)
 {
@@ -10,7 +9,7 @@ void* Tc1ThreadProc(void* param)
 
 	tid = thread_self();
 
-	for(int i=0;i<3;i++){
+	for(int i=0;i<5;i++){
 		sleep(2);
 		printf("Tc1ThreadProc: my thread id (%d), arg is (%d)\n", (int)tid, *((int*)param));
 		count++;
