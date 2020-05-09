@@ -1,7 +1,7 @@
 #include "Thread.h"
 #include "Scheduler.h"
 #include "Queue.h"
-#include <stdio.h> //
+#include <stdio.h>
 
 
 #define CLONE_FLAG ( CLONE_VM | CLONE_SIGHAND | CLONE_FS | CLONE_FILES | SIGCHLD )
@@ -22,7 +22,7 @@ int thread_create(thread_t *thread, thread_attr_t *attr, int priority, void *(*s
         return -1;
     }
 
-    pid = clone((*start_routine), (char*)stack + STACK_SIZE, CLONE_FLAG, arg);
+    pid = clone((int(*)(void*))(*start_routine), (char*)stack + STACK_SIZE, CLONE_FLAG, arg);
 
     kill(pid, SIGSTOP);
     
@@ -44,7 +44,7 @@ int thread_create(thread_t *thread, thread_attr_t *attr, int priority, void *(*s
             break;
         }
         if(i == MAX_THREAD_NUM){        //If thread entry is full
-            perror("Thread is full!\n");
+            perror("Thread is full");
             return -1;
         }
     }
@@ -77,24 +77,34 @@ int thread_suspend(thread_t tid)
         DeleteToWaitQueue(targetThread->pid);
         InsertToWaitQueue(targetThread);
     }
-    else{
-        printf("pid's status is %d\n", targetThread->status);
+    else if(targetThread == pCurrentThread){
+        InsertToWaitQueue(targetThread);
+        return 0;
+    }
+    else
+    {
+        perror("thread_suspend Error");
         return -1;
     }
+    
     return 0;
 }
 
 int thread_cancel(thread_t tid) //thread id
 {
     Thread* targetThread = pThreadTblEnt[tid].pThread;
+
+    if(targetThread == NULL) {
+        perror("thread_cancel error");
+        return -1;
+    }
     kill(targetThread->pid, SIGKILL);
     if(targetThread->status == THREAD_STATUS_READY)     //In ready Q
         DeleleToReadyQueue(targetThread->priority, targetThread->pid);
     else if(targetThread->status == THREAD_STATUS_WAIT) //In wait Q
         DeleteToWaitQueue(targetThread->pid);
-    else{
-        printf("pid's status is %d\n", targetThread->status);
-        return -1;
+    else if(targetThread->status == THREAD_STATUS_RUN){
+        pCurrentThread = NULL;
     }
     pThreadTblEnt[tid].bUsed = 0;
     pThreadTblEnt[tid].pThread = NULL;
@@ -108,7 +118,7 @@ int thread_cancel(thread_t tid) //thread id
 int thread_resume(thread_t tid)
 {
     Thread* targetThread = pThreadTblEnt[tid].pThread;
-    //printf("Resume\n");
+
     if(pCurrentThread == NULL){
         DeleteToWaitQueue(targetThread->pid);
         targetThread->status = THREAD_STATUS_RUN;
@@ -135,7 +145,7 @@ int thread_resume(thread_t tid)
 
         return 0;
     }
-
+    perror("thread_resume error");
     return -1;
 }
 
@@ -164,7 +174,7 @@ int thread_join(thread_t tid, void** retval)
     int exitCode;
 
     struct sigaction act;
-    act.sa_handler = join_handler;
+    act.sa_handler = (void*)join_handler;
     act.sa_flags = SA_NOCLDSTOP;
 
     if(child->status != THREAD_STATUS_ZOMBIE){          //child is not zombie
@@ -173,6 +183,9 @@ int thread_join(thread_t tid, void** retval)
             pCurrentThread = NULL;
             InsertToWaitQueue(parent);                  //parent move to waitQ
             parent->status = THREAD_STATUS_WAIT;
+        }
+        else{
+            return -1;
         }
 
         if(IsReadyQueueEmpty()){
@@ -191,15 +204,18 @@ int thread_join(thread_t tid, void** retval)
             kill(parent->pid, SIGSTOP);
         }
     }
-//1이 끝나면, sigchld발생, 핸들러로 들어가서 join마무리, 부모스레드 레디큐로 들어감.
+
     exitCode = child->exitCode;
     *retval = &exitCode;
-    DeleteToWaitQueue(child->pid);
+    if(DeleteToWaitQueue(child->pid) == NULL){
+        perror("Delete Child Error");
+        return -1;
+    }
 
-    pThreadTblEnt[tid].bUsed = 0;
+    pThreadTblEnt[tid].bUsed = 0;               //Delete Thread table node
     pThreadTblEnt[tid].pThread = NULL;
 
-    free(child->stackAddr);
+    free(child->stackAddr);                     //free memory
     free(child);
     return 0;
 }
@@ -207,6 +223,10 @@ int thread_join(thread_t tid, void** retval)
 
 int thread_exit(void* retval){
     Thread* target = pThreadTblEnt[TableSearch_Thread(getpid())].pThread;
+
+    if(target == NULL)
+        return -1;
+
     target->exitCode = *((int*)retval);
     
     InsertToWaitQueue(target);

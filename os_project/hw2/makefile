@@ -1,5 +1,5 @@
-2015726096_hw2 : main.o Init.o Thread.o Scheduler.o Handler.o Queue.o TestCase1.o TestCase2.o TestCase3.o TestCase4.o
-	gcc -o 2015726096_hw2 main.o Init.o Thread.o Scheduler.o Handler.o Queue.o TestCase1.o TestCase2.o TestCase3.o TestCase4.o -w
+2015726096 : main.o Init.o Thread.o Scheduler.o Handler.o Queue.o TestCase1.o TestCase2.o TestCase3.o TestCase4.o
+	gcc -o 2015726096 main.o Init.o Thread.o Scheduler.o Handler.o Queue.o TestCase1.o TestCase2.o TestCase3.o TestCase4.o -w
 main.o : main.c
 	gcc -c -o main.o main.c -w
 Init.o : Init.c
@@ -21,4 +21,4 @@ TestCase3.o : TestCase3.o
 TestCase4.o : TestCase4.o
 	gcc -c -o TestCase4.o TestCase4.c -w
 clean :
-	rm *.o 2015726096_hw2
+	rm *.o 2015726096
