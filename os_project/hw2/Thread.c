@@ -28,7 +28,7 @@ int thread_create(thread_t *thread, thread_attr_t *attr, int priority, void *(*s
     
     tcb->stackSize = STACK_SIZE;
     tcb->stackAddr = stack;
-    tcb->exitCode = 0;///////???
+    tcb->exitCode = 0;
     tcb->pid = pid;
     tcb->priority = priority;
     tcb->phNext = NULL;
