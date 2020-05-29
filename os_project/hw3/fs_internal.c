@@ -7,16 +7,29 @@
 void FileSysInit(){
     int i;
     char* buf;
-    // Init Superblock, bytemap
-    for(i = 0; i < INODELIST_BLOCK_FIRST; i++){
+    int* inodeBuf;
+    
+    // Init FileSysInfo block
+    buf = (char*)calloc(BLOCK_SIZE/sizeof(int), sizeof(int));
+    DevWriteBlock(FILESYS_INFO_BLOCK, buf);
+
+    // Init bytemap
+    for(i = INODE_BYTEMAP_BLOCK_NUM; i <= BLOCK_BYTEMAP_BLOCK_NUM; i++){
         buf = (char*)calloc(BLOCK_SIZE, 1);
         DevWriteBlock(i, buf);
     }
+
     // Init Inode list
     for(i = INODELIST_BLOCK_FIRST; i < 7; i++){
         buf = (char*)calloc(BLOCK_SIZE/sizeof(int), sizeof(int));
         DevWriteBlock(i, buf);
-    } 
+    }
+
+    // Init Data Region
+    for(i = 7; i < FS_DISK_CAPACITY/BLOCK_SIZE; i++){
+        buf = (char*)calloc(BLOCK_SIZE, 1);
+        DevWriteBlock(i, buf);
+    }
 }
 
 void SetInodeBytemap(int inodeno)
@@ -105,7 +118,7 @@ int GetFreeInodeNum(void)
 
     DevReadBlock(INODE_BYTEMAP_BLOCK_NUM, buf);
 
-    for(i = 0; i < NUM_OF_INODE_PER_BLOCK * INODELIST_BLOCKS; i++){        //0~63
+    for(i = 0; i < NUM_OF_INODE_PER_BLOCK * INODELIST_BLOCKS; i++){     //0~63
         if(buf[i] == 0)
             return i;
     }
@@ -121,7 +134,7 @@ int GetFreeBlockNum(void)
 
     DevReadBlock(BLOCK_BYTEMAP_BLOCK_NUM, buf);
 
-    for(i = 0; i < BLOCK_SIZE; i++){
+    for(i = 7; i < BLOCK_SIZE; i++){    //data region start block=7
         if(buf[i] == 0)
             return i;
     }

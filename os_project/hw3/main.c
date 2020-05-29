@@ -19,7 +19,7 @@ int main(){
 
 	blknum = GetFreeBlockNum();
 	printf("3. %d\n", blknum);
-
+	
 	SetBlockBytemap(blknum);
 	blknum = GetFreeBlockNum();
 	printf("4. %d\n", blknum);
