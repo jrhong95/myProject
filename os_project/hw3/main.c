@@ -3,42 +3,27 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <dirent.h>
+#include <unistd.h>
 
 int main(){
-	int blknum, inodenum;
-	Inode inode, *pInode;
-	int *ptr;
-	FileSysInit();
-	DevCreateDisk();
+	DirEntryInfo pDirEntry[20];
+	CreateFileSystem();
 
-	inodenum = GetFreeInodeNum();
-	printf("1. %d\n", inodenum);
+	MakeDir("/temp");
+	MakeDir("/temp/aaa");
+	MakeDir("/tttt");
+	CreateFile("/temp/abc");
+	CreateFile("/temp/abc/aaa");
 
-	SetInodeBytemap(inodenum);
-	printf("inode byte map set %d\n", inodenum);
+	CloseFile(0);
+	OpenFile("/temp/abc");
 
-	blknum = GetFreeBlockNum();
-	printf("3. %d\n", blknum);
-	
-	SetBlockBytemap(blknum);
-	blknum = GetFreeBlockNum();
-	printf("4. %d\n", blknum);
+	EnumerateDirStatus("/temp/aaa", pDirEntry, 20);
+	printf("Fin\n");
 
-	inode.allocBlocks = 1;
-	inode.size = 2;
-	inode.type = 3;
-	inode.dirBlockPtr[0] = 0;
-	inode.dirBlockPtr[1] = 1;
-	inode.dirBlockPtr[2] = 1;
-	inode.dirBlockPtr[3] = 1;
-	inode.dirBlockPtr[4] = 1;
-
-	PutInode(inodenum, &inode);
-	pInode = (Inode*)malloc(sizeof(Inode));
-	printf("%d %d %d \n", pInode->allocBlocks, pInode->size, pInode->type);
-	GetInode(inodenum, pInode);
-
-	printf("%d %d %d \n", pInode->allocBlocks, pInode->size, pInode->type);
+	CloseFileSystem();
 	return 0;
 }
  

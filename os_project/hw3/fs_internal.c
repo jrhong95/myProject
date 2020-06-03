@@ -7,7 +7,7 @@
 void FileSysInit(){
     int i;
     char* buf;
-    int* inodeBuf;
+    Inode* inodeBuf;
     
     // Init FileSysInfo block
     buf = (char*)calloc(BLOCK_SIZE/sizeof(int), sizeof(int));
@@ -21,14 +21,20 @@ void FileSysInit(){
 
     // Init Inode list
     for(i = INODELIST_BLOCK_FIRST; i < 7; i++){
-        buf = (char*)calloc(BLOCK_SIZE/sizeof(int), sizeof(int));
-        DevWriteBlock(i, buf);
+        inodeBuf = (Inode*)calloc(BLOCK_SIZE/sizeof(Inode), sizeof(Inode));
+        DevWriteBlock(i, (char*)inodeBuf);
     }
 
     // Init Data Region
     for(i = 7; i < FS_DISK_CAPACITY/BLOCK_SIZE; i++){
         buf = (char*)calloc(BLOCK_SIZE, 1);
         DevWriteBlock(i, buf);
+    }
+
+    //Init FileDesc table
+    for(i = 0; i < MAX_FD_ENTRY_MAX; i++){
+        pFileDesc[i].bUsed = 0;
+        pFileDesc[i].pOpenFile = NULL;
     }
 }
 
@@ -73,40 +79,38 @@ void ResetBlockBytemap(int blkno)
 
 
 void PutInode(int inodeno, Inode* pInode)
-{   //0~15: 3, 16~31: 4, 32~47: 5, 48~63: 6
+{   
     int i;
     int blkno = inodeno / NUM_OF_INODE_PER_BLOCK + INODELIST_BLOCK_FIRST;
-    int inodeByteStart = inodeno * sizeof(Inode);
-    char* buf = (char*)malloc(BLOCK_SIZE);
+    Inode* buf = (Inode*)malloc(BLOCK_SIZE);
 
-    DevReadBlock(blkno, buf);
+    DevReadBlock(blkno, (char*)buf);
 
     // Copy pInode to buffer
-    buf[inodeByteStart] = pInode->allocBlocks;
-    buf[inodeByteStart + 1] = pInode->size;
-    buf[inodeByteStart + 2] = pInode->type;
+    buf[inodeno].allocBlocks = pInode->allocBlocks;
+    buf[inodeno].size = pInode->size;
+    buf[inodeno].type = pInode->type;
     for(i = 0; i < NUM_OF_DIRECT_BLOCK_PTR; i++){
-        buf[inodeByteStart + 3 + i] = pInode->dirBlockPtr[i];
+        buf[inodeno].dirBlockPtr[i] = pInode->dirBlockPtr[i];
     }
 
-    DevWriteBlock(blkno, buf);
+    DevWriteBlock(blkno, (char*)buf);
 }
 
 void GetInode(int inodeno, Inode* pInode)
 {    //0~15: 3, 16~31: 4, 32~47: 5, 48~63: 6
     int i;
     int blkno = inodeno / NUM_OF_INODE_PER_BLOCK + INODELIST_BLOCK_FIRST;
-    int inodeByteStart = inodeno * sizeof(Inode);
-    char* buf = (char*)malloc(BLOCK_SIZE);
+    Inode* buf = (Inode*)malloc(BLOCK_SIZE);
 
-    DevReadBlock(blkno, buf);
+    DevReadBlock(blkno, (char*)buf);
 
     // Copy buffer to pInode
-    pInode->allocBlocks = (int)buf[inodeByteStart];
-    pInode->size = (int)buf[inodeByteStart + 1];
-    pInode->type = (int)buf[inodeByteStart + 2];
+    pInode->allocBlocks = buf[inodeno].allocBlocks;
+    pInode->size = buf[inodeno].size;
+    pInode->type = buf[inodeno].type;
     for(i = 0; i < NUM_OF_DIRECT_BLOCK_PTR; i++){
-        pInode->dirBlockPtr[i] = (int)buf[inodeByteStart + 3 + i];
+        pInode->dirBlockPtr[i] = buf[inodeno].dirBlockPtr[i];
     }
 }
 
