@@ -9,6 +9,7 @@
 
 int main(){
 	DirEntryInfo pDirEntry[20];
+	int i;
 	CreateFileSystem();
 
 	MakeDir("/temp");
@@ -20,8 +21,9 @@ int main(){
 	CloseFile(0);
 	OpenFile("/temp/abc");
 
-	EnumerateDirStatus("/temp/aaa", pDirEntry, 20);
-	printf("Fin\n");
+	for(i = 0; i < EnumerateDirStatus("/temp", pDirEntry, 20); i++){
+		printf("[%d] name: %s type: %d  inode: %d\n", i,pDirEntry[i].name, pDirEntry[i].type, pDirEntry[i].inodeNum);
+	}
 
 	CloseFileSystem();
 	return 0;
