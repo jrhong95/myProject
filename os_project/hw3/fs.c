@@ -7,6 +7,9 @@
 FileSysInfo* pFileSysInfo;
 int level = 0;  //inodex 탐색을 위한 전역변수
 
+//
+//  입력받은 디렉토리의 block num을 리턴한다
+//
 int OpenDir(const char* szDirName){
     int inodeno, retval;
     int i, j;
@@ -19,6 +22,9 @@ int OpenDir(const char* szDirName){
     memset(nextdirName, 0 , strlen(nextdirName));
     memset(delRootName, 0, strlen(delRootName));
 
+    // Open Root dir
+    if(strcmp(szDirName, "/") == 0)
+        return 7;
     if(szDirName[0] != '/' && level == 0){
         perror("arg 1 is not directory");
         level = 0;
@@ -76,6 +82,100 @@ int OpenDir(const char* szDirName){
             }
 
             return OpenDir(nextdirName);
+        }
+        i++;
+    }
+    // tokenize 이후 값과 이전의 값이 다를 경우-> 하위디렉토리가 존재하는 것
+    //하위 디렉토리가 있는데 탐색하려던 디렉토리가 없는 경우
+    if(nextdirName[0] != '\0'){
+        perror("Not Exist Dir\n");
+        level = 0;
+        return -1;
+    }
+}
+//
+//  target 전까지의 directory의 block num을 return 함
+//
+int OpenBeforeTarget(const char* szDirName){
+    int inodeno, retval;
+    int i, j;
+    char delRootName[strlen(szDirName)-1];
+    char dirName[MAX_NAME_LEN], nextdirName[strlen(szDirName)-1];
+    Inode* pInode = NULL;
+    DirEntry* dirEntry = NULL;
+
+    memset(dirName, 0, strlen(dirName));
+    memset(nextdirName, 0 , strlen(nextdirName));
+    memset(delRootName, 0, strlen(delRootName));
+
+    // Open Root dir
+    if(strcmp(szDirName, "/") == 0)
+        return 7;
+    
+
+    if(szDirName[0] != '/' && level == 0){
+        perror("arg 1 is not directory");
+        level = 0;
+        return -1;
+    }
+
+    // Delete '/'
+    for(i = 0; i< strlen(szDirName) - 1; i++){
+	    delRootName[i] = szDirName[i+1];
+	}
+    delRootName[strlen(szDirName)-1] = '\0';
+    
+
+    // 현재 디렉토리와 다음 디렉토리 분리
+    i = 0;
+    while(delRootName[i] != '/' && delRootName[i] != '\0'){
+        dirName[i] = delRootName[i];
+        i++;
+    }
+    dirName[i] = '\0';
+    j = 0;
+    nextdirName[j] = delRootName[i];
+    i++;
+    j = 1;
+    while(delRootName[i] != '\0'){
+        nextdirName[j] = delRootName[i];
+        i++;
+        j++;
+    }
+    nextdirName[j] = '\0';
+
+    //printf("%s  %s\n", dirName, nextdirName);
+
+    //root dir add szDirName
+    pInode = (Inode*)malloc(sizeof(Inode));
+    GetInode(level, pInode);
+    dirEntry = (DirEntry*)malloc(BLOCK_SIZE);
+    if(nextdirName[0] == '\0'){
+        printf("last Dir\n");
+        level = 0;
+        return -1214;
+    }
+
+    if(pInode->type == FILE_TYPE_FILE){
+        perror("Can not create file, not Directory\n");
+        level = 0;
+        return -1;
+    }
+    DevReadBlock(pInode->dirBlockPtr[0], (char*)dirEntry);
+
+    i = 0;
+    while(strcmp(dirEntry[i].name, "EOD") != 0){
+        if(strcmp(dirEntry[i].name, dirName) == 0){  //디렉토리가 존재할경우
+            level = dirEntry[i].inodeNum;
+            
+            if(nextdirName[0] == '\0'){             //마지막 디렉토리인 경우
+                GetInode(level, pInode);
+                level = 0;
+                //printf("OpenDir : %d\n", pInode->dirBlockPtr[0]);
+                return pInode->dirBlockPtr[0];
+            }
+
+            return OpenBeforeTarget(nextdirName);
         }
         i++;
     }
@@ -434,7 +534,7 @@ int		CloseFile(int fileDesc)
 ////////////////////////////////////////////////////////////////////////////////
 int		RemoveFile(const char* szFileName)
 {
-
+    OpenBeforeTarget(szFileName);
 }
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
@@ -570,7 +670,9 @@ int		RemoveDir(const char* szDirName)
 {
     Inode *pInode = NULL;
     DirEntry *dirEntry = (DirEntry*)malloc(BLOCK_SIZE);
-    int i, curInodeNo, prevInodeNo, curBlkNum = OpenDir(szDirName);
+    FileSysInfo *filesys = NULL;
+    int i, dirEntryIndex, curInodeNo, prevInodeNo;
+    int prevBlkNum, curBlkNum = OpenDir(szDirName); // Open target dir
 
     DevReadBlock(curBlkNum, (char*)dirEntry);
     // szDir is not Empty
@@ -578,22 +680,49 @@ int		RemoveDir(const char* szDirName)
         printf("%s is not Empty\n", szDirName);
         return -1;
     }
-    // go to ..
+
     prevInodeNo = dirEntry[1].inodeNum;
     curInodeNo = dirEntry[0].inodeNum;
+
+    // Delete target dir inode 
+    pInode = (Inode*)calloc(sizeof(Inode)/sizeof(int), sizeof(int));
+    PutInode(curInodeNo, pInode);
+    ResetInodeBytemap(curInodeNo);
+
+    // Delete target dir block
+    dirEntry = (DirEntry*)calloc(NUM_OF_DIRENT_PER_BLOCK, sizeof(DirEntry));
+    DevWriteBlock(curBlkNum, (char*)dirEntry);
+    ResetBlockBytemap(curBlkNum);
+/*     for(i = 0; i < NUM_OF_DIRENT_PER_BLOCK; i++)
+        printf("%s %d\n", dirEntry[i].name, dirEntry[i].inodeNum); */
+
+    //Prev Directory Inode & block Read
     pInode = (Inode*)malloc(sizeof(Inode));
     GetInode(prevInodeNo, pInode);
+    prevBlkNum = pInode->dirBlockPtr[0];
+    dirEntry = (DirEntry*)malloc(BLOCK_SIZE);
+    DevReadBlock(prevBlkNum, (char*)dirEntry);
 
-    curBlkNum = pInode->dirBlockPtr[0];
-    //reset block
-    dirEntry = (DirEntry*)calloc(BLOCK_SIZE, 1);
-    for(i = 0; i < NUM_OF_DIRENT_PER_BLOCK; i++)
-        printf("%s %d\n", dirEntry[i].name, dirEntry[i].inodeNum);
-
-    i = 0;
-    while(dirEntry[i].inodeNum != curInodeNo){
-        i++;
+    //Find target dir
+    dirEntryIndex = 0;
+    while(dirEntry[dirEntryIndex].inodeNum != curInodeNo){
+        dirEntryIndex++;
     }
+    //Delete target dir & logical block update
+    while(strcmp(dirEntry[dirEntryIndex].name, "EOD") != 0){
+        strcpy(dirEntry[dirEntryIndex].name, dirEntry[dirEntryIndex + 1].name); //next dir copy
+        dirEntry[dirEntryIndex].inodeNum = dirEntry[dirEntryIndex + 1].inodeNum;
+        dirEntryIndex++;
+    }
+    DevWriteBlock(prevBlkNum, (char*)dirEntry);
+    // File System Update
+    filesys = (FileSysInfo*)malloc(BLOCK_SIZE);
+    DevReadBlock(FILESYS_INFO_BLOCK, (char*)filesys);
+    filesys->numAllocBlocks--;
+    filesys->numAllocInodes--;
+    filesys->numFreeBlocks++;
+    DevWriteBlock(FILESYS_INFO_BLOCK, (char*)filesys);
+    pFileSysInfo = filesys;
     return 0;
 }
 

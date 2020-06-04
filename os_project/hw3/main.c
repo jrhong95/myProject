@@ -9,23 +9,29 @@
 
 int main(){
 	DirEntryInfo pDirEntry[20];
-	int i;
+	int i, num;
 	CreateFileSystem();
 
 	MakeDir("/temp");
 	MakeDir("/temp/aaa");
 	MakeDir("/tttt");
 	CreateFile("/temp/abc");
-
 	CloseFile(0);
-	OpenFile("/");
-
-	for(i = 0; i < EnumerateDirStatus("/temp", pDirEntry, 20); i++){
+	
+	num = EnumerateDirStatus("/temp", pDirEntry, 20);
+	for(i = 0; i < num; i++){
 		printf("[%d] name: %s type: %d  inode: %d\n", i,pDirEntry[i].name, pDirEntry[i].type, pDirEntry[i].inodeNum);
 	}
 
 	printf("============================\n");
 	RemoveDir("/temp/aaa");
+
+	num = EnumerateDirStatus("/", pDirEntry, 20);
+	for(i = 0; i < num; i++){
+		printf("[%d] name: %s type: %d  inode: %d\n", i,pDirEntry[i].name, pDirEntry[i].type, pDirEntry[i].inodeNum);
+	}
+	
+	RemoveFile("/temp/abc");
 	CloseFileSystem();
 	return 0;
 }
