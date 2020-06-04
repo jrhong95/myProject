@@ -156,7 +156,7 @@ int		CreateFile(const char* szFileName)
     i = 0;
     while(strcmp(dirEntry[i].name, "EOD") != 0){
         if(strcmp(dirEntry[i].name, name) == 0){  //디렉토리가 존재할경우
-            if(nextName == NULL){             //다음 디렉토리가 없을 경우 
+            if(nextName[0] == '\0'){             //다음 디렉토리가 없을 경우 
                 perror("Already Exist File");
                 level = 0;
                 return -1;
@@ -498,7 +498,7 @@ int		MakeDir(const char* szDirName)
     i = 0;
     while(strcmp(dirEntry[i].name, "EOD") != 0){
         if(strcmp(dirEntry[i].name, dirName) == 0){  //디렉토리가 존재할경우
-            if(nextdirName == NULL){             //다음 디렉토리가 없을 경우 
+            if(nextdirName[0] == '\0'){             //다음 디렉토리가 없을 경우 
                 perror("Already Exist Dir\n");
                 level = 0;
                 return -1;
@@ -568,14 +568,40 @@ int		MakeDir(const char* szDirName)
 ////////////////////////////////////////////////////////////////////////////////
 int		RemoveDir(const char* szDirName)
 {
+    Inode *pInode = NULL;
+    DirEntry *dirEntry = (DirEntry*)malloc(BLOCK_SIZE);
+    int i, curInodeNo, prevInodeNo, curBlkNum = OpenDir(szDirName);
 
+    DevReadBlock(curBlkNum, (char*)dirEntry);
+    // szDir is not Empty
+    if(strcmp(dirEntry[2].name, "EOD") != 0){
+        printf("%s is not Empty\n", szDirName);
+        return -1;
+    }
+    // go to ..
+    prevInodeNo = dirEntry[1].inodeNum;
+    curInodeNo = dirEntry[0].inodeNum;
+    pInode = (Inode*)malloc(sizeof(Inode));
+    GetInode(prevInodeNo, pInode);
+
+    curBlkNum = pInode->dirBlockPtr[0];
+    //reset block
+    dirEntry = (DirEntry*)calloc(BLOCK_SIZE, 1);
+    for(i = 0; i < NUM_OF_DIRENT_PER_BLOCK; i++)
+        printf("%s %d\n", dirEntry[i].name, dirEntry[i].inodeNum);
+
+    i = 0;
+    while(dirEntry[i].inodeNum != curInodeNo){
+        i++;
+    }
+    return 0;
 }
 
 int   EnumerateDirStatus(const char* szDirName, DirEntryInfo* pDirEntry, int dirEntrys)
 {
     int curBlkNum = OpenDir(szDirName);
     int i, retval = 0;
-    Inode *pInode = (Inode*)malloc(sizeof(Inode));
+    Inode *pInode = NULL;
     DirEntry *dirEntry = (DirEntry*)malloc(BLOCK_SIZE); 
     DevReadBlock(curBlkNum, (char*)dirEntry);
 
@@ -585,6 +611,11 @@ int   EnumerateDirStatus(const char* szDirName, DirEntryInfo* pDirEntry, int dir
 
         strcpy(pDirEntry[i].name, dirEntry[i].name);
         pDirEntry[i].inodeNum = dirEntry[i].inodeNum;
+
+        pInode = (Inode*)malloc(sizeof(Inode));
+        GetInode(pDirEntry[i].inodeNum, pInode);
+        pDirEntry[i].type = pInode->type;
+
         if((strcmp(dirEntry[i].name, ".") == 0) || 
             (strcmp(dirEntry[i].name, "..") == 0)){
                 pDirEntry[i].type = FILE_TYPE_DEV;      //??????
@@ -664,5 +695,5 @@ void	CloseFileSystem()
 
 int		GetFileStatus(const char* szPathName, FileStatus* pStatus)
 {
-
+    
 }

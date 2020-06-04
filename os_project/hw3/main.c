@@ -16,15 +16,16 @@ int main(){
 	MakeDir("/temp/aaa");
 	MakeDir("/tttt");
 	CreateFile("/temp/abc");
-	CreateFile("/temp/abc/aaa");
 
 	CloseFile(0);
-	OpenFile("/temp/abc");
+	OpenFile("/");
 
 	for(i = 0; i < EnumerateDirStatus("/temp", pDirEntry, 20); i++){
 		printf("[%d] name: %s type: %d  inode: %d\n", i,pDirEntry[i].name, pDirEntry[i].type, pDirEntry[i].inodeNum);
 	}
 
+	printf("============================\n");
+	RemoveDir("/temp/aaa");
 	CloseFileSystem();
 	return 0;
 }
