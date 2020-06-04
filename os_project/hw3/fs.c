@@ -8,7 +8,7 @@ FileSysInfo* pFileSysInfo;
 int level = 0;  //inodex 탐색을 위한 전역변수
 
 //
-//  입력받은 target의 block num을 리턴한다
+//  입력받은 target의 inode number를 리턴한다
 //
 int OpenDir(const char* szDirName){
     int inodeno, retval;
@@ -76,10 +76,10 @@ int OpenDir(const char* szDirName){
             
             if(nextdirName[0] == '\0'){             //마지막 디렉토리인 경우
                 GetInode(level, pInode);
+                retval = level;
                 level = 0;
-                return pInode->dirBlockPtr[0];
+                return retval;
             }
-
             return OpenDir(nextdirName);
         }
         i++;
@@ -107,6 +107,7 @@ int		CreateFile(const char* szFileName)
     DirEntry* dirEntry = NULL;
     File *file = NULL;
     FileSysInfo* filesys = NULL;
+
     memset(name, 0, strlen(name));
     memset(nextName, 0 , strlen(nextName));
     memset(delRootName, 0, strlen(delRootName));
@@ -142,8 +143,6 @@ int		CreateFile(const char* szFileName)
         j++;
     }
     nextName[j] = '\0';
-
-    //printf("%s  %s\n", name, nextName);
 
     //find Inode and block
     pInode = (Inode*)malloc(sizeof(Inode));
@@ -193,7 +192,10 @@ int		CreateFile(const char* szFileName)
     pInode->allocBlocks = 0;     /////// empty File
     pInode->size = 0;
     pInode->type = FILE_TYPE_FILE;
-    pInode->dirBlockPtr[0] = -1; ////// block not allocated
+    for(i = 0; i < NUM_OF_DIRECT_BLOCK_PTR; i++){
+        pInode->dirBlockPtr[i] = -1; ////// block not allocated
+    }
+
     PutInode(inodeno, pInode);
 
     SetInodeBytemap(inodeno);
@@ -701,8 +703,12 @@ int		RemoveDir(const char* szDirName)
     Inode *pInode = NULL;
     DirEntry *dirEntry = (DirEntry*)malloc(BLOCK_SIZE);
     FileSysInfo *filesys = NULL;
-    int i, dirEntryIndex, curInodeNo, prevInodeNo;
-    int prevBlkNum, curBlkNum = OpenDir(szDirName); // Open target dir
+    int i, dirEntryIndex, curBlkNum, prevBlkNum;
+    int prevInodeNo, curInodeNo = OpenDir(szDirName); // Open target dir
+
+    pInode = (Inode*)malloc(sizeof(Inode));
+    GetInode(curInodeNo, pInode);
+    curBlkNum = pInode->dirBlockPtr[0];
 
     DevReadBlock(curBlkNum, (char*)dirEntry);
     // szDir is not Empty
@@ -758,10 +764,15 @@ int		RemoveDir(const char* szDirName)
 
 int   EnumerateDirStatus(const char* szDirName, DirEntryInfo* pDirEntry, int dirEntrys)
 {
-    int curBlkNum = OpenDir(szDirName);
+    int curInodeNo = OpenDir(szDirName);
+    int curBlkNum;
     int i, retval = 0;
     Inode *pInode = NULL;
     DirEntry *dirEntry = (DirEntry*)malloc(BLOCK_SIZE); 
+
+    pInode = (Inode*)malloc(sizeof(Inode));
+    GetInode(curInodeNo, pInode);
+    curBlkNum = pInode->dirBlockPtr[0];
     DevReadBlock(curBlkNum, (char*)dirEntry);
 
     for(i = 0; i < dirEntrys; i++){
@@ -854,5 +865,23 @@ void	CloseFileSystem()
 
 int		GetFileStatus(const char* szPathName, FileStatus* pStatus)
 {
+    int i, inodeno = OpenDir(szPathName);
+    Inode *pInode = NULL;
+
+    if(inodeno == -1){
+        perror("GetFileStatus Error: Open Path error.");
+        return -1;
+    }
+
+    pInode = (Inode*)malloc(sizeof(Inode));
+    GetInode(inodeno, pInode);
+
+    pStatus->allocBlocks = pInode->allocBlocks;
+    pStatus->size = pInode->size;
+    pStatus->type = pInode->type;
+    for(i = 0; i < NUM_OF_DIRECT_BLOCK_PTR; i++){
+        pStatus->dirBlockPtr[i] = pInode->dirBlockPtr[i];
+    }
     
+    return 0;
 }

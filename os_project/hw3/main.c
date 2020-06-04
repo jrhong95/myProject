@@ -10,6 +10,7 @@
 int main(){
 	DirEntryInfo pDirEntry[20];
 	int i, num;
+	FileStatus status;
 	CreateFileSystem();
 
 	MakeDir("/temp");
@@ -38,6 +39,8 @@ int main(){
 	}
 	printf("============================\n");
 
+	GetFileStatus("/temp/aaa", &status);
+	printf("file size: %d | blocks: %d | type: %d\n", status.size, status.allocBlocks, status.type);
 	CloseFileSystem();
 	return 0;
 }
