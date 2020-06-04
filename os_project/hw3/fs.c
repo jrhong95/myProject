@@ -8,7 +8,7 @@ FileSysInfo* pFileSysInfo;
 int level = 0;  //inodex 탐색을 위한 전역변수
 
 //
-//  입력받은 디렉토리의 block num을 리턴한다
+//  입력받은 target의 block num을 리턴한다
 //
 int OpenDir(const char* szDirName){
     int inodeno, retval;
@@ -77,7 +77,6 @@ int OpenDir(const char* szDirName){
             if(nextdirName[0] == '\0'){             //마지막 디렉토리인 경우
                 GetInode(level, pInode);
                 level = 0;
-                //printf("OpenDir : %d\n", pInode->dirBlockPtr[0]);
                 return pInode->dirBlockPtr[0];
             }
 
@@ -93,101 +92,6 @@ int OpenDir(const char* szDirName){
         return -1;
     }
 }
-//
-//  target 전까지의 directory의 block num을 return 함
-//
-int OpenBeforeTarget(const char* szDirName){
-    int inodeno, retval;
-    int i, j;
-    char delRootName[strlen(szDirName)-1];
-    char dirName[MAX_NAME_LEN], nextdirName[strlen(szDirName)-1];
-    Inode* pInode = NULL;
-    DirEntry* dirEntry = NULL;
-
-    memset(dirName, 0, strlen(dirName));
-    memset(nextdirName, 0 , strlen(nextdirName));
-    memset(delRootName, 0, strlen(delRootName));
-
-    // Open Root dir
-    if(strcmp(szDirName, "/") == 0)
-        return 7;
-    
-
-    if(szDirName[0] != '/' && level == 0){
-        perror("arg 1 is not directory");
-        level = 0;
-        return -1;
-    }
-
-    // Delete '/'
-    for(i = 0; i< strlen(szDirName) - 1; i++){
-	    delRootName[i] = szDirName[i+1];
-	}
-    delRootName[strlen(szDirName)-1] = '\0';
-    
-
-    // 현재 디렉토리와 다음 디렉토리 분리
-    i = 0;
-    while(delRootName[i] != '/' && delRootName[i] != '\0'){
-        dirName[i] = delRootName[i];
-        i++;
-    }
-    dirName[i] = '\0';
-    j = 0;
-    nextdirName[j] = delRootName[i];
-    i++;
-    j = 1;
-    while(delRootName[i] != '\0'){
-        nextdirName[j] = delRootName[i];
-        i++;
-        j++;
-    }
-    nextdirName[j] = '\0';
-
-    //printf("%s  %s\n", dirName, nextdirName);
-
-    //root dir add szDirName
-    pInode = (Inode*)malloc(sizeof(Inode));
-    GetInode(level, pInode);
-    dirEntry = (DirEntry*)malloc(BLOCK_SIZE);
-    if(nextdirName[0] == '\0'){
-        printf("last Dir\n");
-        level = 0;
-        return -1214;
-    }
-
-    if(pInode->type == FILE_TYPE_FILE){
-        perror("Can not create file, not Directory\n");
-        level = 0;
-        return -1;
-    }
-    DevReadBlock(pInode->dirBlockPtr[0], (char*)dirEntry);
-
-    i = 0;
-    while(strcmp(dirEntry[i].name, "EOD") != 0){
-        if(strcmp(dirEntry[i].name, dirName) == 0){  //디렉토리가 존재할경우
-            level = dirEntry[i].inodeNum;
-            
-            if(nextdirName[0] == '\0'){             //마지막 디렉토리인 경우
-                GetInode(level, pInode);
-                level = 0;
-                //printf("OpenDir : %d\n", pInode->dirBlockPtr[0]);
-                return pInode->dirBlockPtr[0];
-            }
-
-            return OpenBeforeTarget(nextdirName);
-        }
-        i++;
-    }
-    // tokenize 이후 값과 이전의 값이 다를 경우-> 하위디렉토리가 존재하는 것
-    //하위 디렉토리가 있는데 탐색하려던 디렉토리가 없는 경우
-    if(nextdirName[0] != '\0'){
-        perror("Not Exist Dir\n");
-        level = 0;
-        return -1;
-    }
-}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
@@ -458,6 +362,7 @@ int		WriteFile(int fileDesc, char* pBuffer, int length)
 
     //Update FileSysInfo Block
     filesys = (FileSysInfo*)malloc(BLOCK_SIZE);
+    DevReadBlock(FILESYS_INFO_BLOCK, (char*)filesys);
     filesys->numAllocBlocks++;
     filesys->numFreeBlocks--;
     DevWriteBlock(FILESYS_INFO_BLOCK, (char*)filesys);
@@ -534,7 +439,132 @@ int		CloseFile(int fileDesc)
 ////////////////////////////////////////////////////////////////////////////////
 int		RemoveFile(const char* szFileName)
 {
-    OpenBeforeTarget(szFileName);
+    int i, j, fileDirEntryIndex;
+    int delFileInodeNum, blkno, prevBlkNum;
+    char delRootName[strlen(szFileName)-1];
+    char name[MAX_NAME_LEN], nextName[strlen(szFileName)-1];
+    char *buf;
+    Inode* pInode = NULL;
+    DirEntry* dirEntry = NULL;
+    File *file = NULL;
+    FileSysInfo* filesys = NULL;
+    
+    memset(name, 0, strlen(name));
+    memset(nextName, 0 , strlen(nextName));
+    memset(delRootName, 0, strlen(delRootName));
+
+    // arg is not dir when root dir
+    if(szFileName[0] != '/' && level == 0){
+        perror("RemoveFile Error: arg is not directory");
+        level = 0;
+        return -1;
+    }
+
+    // Delete '/'
+    for(i = 0; i< strlen(szFileName) - 1; i++){
+	    delRootName[i] = szFileName[i+1];
+	}
+    delRootName[strlen(szFileName)-1] = '\0';
+    
+
+    // 현재 디렉토리와 다음 디렉토리 분리
+    i = 0;
+    while(delRootName[i] != '/' && delRootName[i] != '\0'){
+        name[i] = delRootName[i];
+        i++;
+    }
+    name[i] = '\0';
+    j = 0;
+    nextName[j] = delRootName[i];
+    i++;
+    j = 1;
+    while(delRootName[i] != '\0'){
+        nextName[j] = delRootName[i];
+        i++;
+        j++;
+    }
+    nextName[j] = '\0';
+
+    //find Inode and block
+    pInode = (Inode*)malloc(sizeof(Inode));
+    GetInode(level, pInode);
+    dirEntry = (DirEntry*)malloc(BLOCK_SIZE);
+    
+    if(pInode->type == FILE_TYPE_FILE){
+        perror("RemoveFile Error: Can not create file, not Directory");
+        level = 0;
+        return -1;
+    }
+    DevReadBlock(pInode->dirBlockPtr[0], (char*)dirEntry);
+    prevBlkNum = pInode->dirBlockPtr[0];
+
+    i = 0;
+    while(strcmp(dirEntry[i].name, "EOD") != 0){
+        if(strcmp(dirEntry[i].name, name) == 0){  //디렉토리가 존재할경우
+            if(nextName[0] != '\0'){             //다음 디렉토리가 있을경우 
+                level = dirEntry[i].inodeNum;
+                return RemoveFile(nextName);
+            }
+        }
+        i++;
+    }
+    //하위 디렉토리가 있는데 탐색하려던 디렉토리가 없는 경우
+    if(nextName[0] != '\0'){
+        perror("RemoveFile Error: Not Exist Dir");
+        level = 0;
+        return -1;
+    }
+    i = 0;
+    while(strcmp(dirEntry[i].name, name) != 0){
+        i++;
+    }
+    fileDirEntryIndex = i;
+    delFileInodeNum = dirEntry[i].inodeNum;
+    for(i = 0; i < MAX_FD_ENTRY_MAX; i++){
+        if(pFileDesc[i].bUsed == 1
+        && pFileDesc[i].pOpenFile->inodeNum == delFileInodeNum){
+            perror("RemoveFile Error: File is Opened");
+            return -1;
+        }
+    }
+
+    GetInode(delFileInodeNum, pInode);
+    if(pInode->type != FILE_TYPE_FILE){
+        perror("RemoveFile Error: Not File");
+        return -1;
+    }
+
+    filesys = (FileSysInfo*)malloc(BLOCK_SIZE);
+    DevReadBlock(FILESYS_INFO_BLOCK, (char*)filesys);
+    // Reset allocated blocks
+    for(i = 0; i < pInode->size / BLOCK_SIZE; i++){
+        blkno = pInode->allocBlocks;
+        buf = (char*)calloc(BLOCK_SIZE, sizeof(char));
+        DevWriteBlock(blkno, buf);
+        ResetBlockBytemap(blkno);
+        //Update fileSysInfo
+        filesys->numAllocBlocks--;
+        filesys->numFreeBlocks++;
+        //free
+    }
+    // Reset allocated Inode
+    pInode = (Inode*)calloc(sizeof(Inode) / sizeof(int), sizeof(int));
+    PutInode(delFileInodeNum, pInode);
+    ResetInodeBytemap(delFileInodeNum);
+    filesys->numAllocInodes--;
+
+    while(strcmp(dirEntry[fileDirEntryIndex].name, "EOD") != 0){
+        strcpy(dirEntry[fileDirEntryIndex].name, dirEntry[fileDirEntryIndex + 1].name);
+        dirEntry[fileDirEntryIndex].inodeNum = dirEntry[fileDirEntryIndex + 1].inodeNum;
+        fileDirEntryIndex++;
+    }
+
+    //Delete target dir & logical block update
+    DevWriteBlock(prevBlkNum, (char*)dirEntry);
+    DevWriteBlock(FILESYS_INFO_BLOCK, (char*)filesys);
+    pFileSysInfo = filesys;
+    level = 0;
+    return 0;
 }
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
