@@ -120,6 +120,7 @@ void TestCase2(void)
 	char fileName[FILENAME_MAX_LEN];
 	char tempName[FILENAME_MAX_LEN];
 	char paths[15][FILENAME_MAX_LEN];
+	int fd[4] = { 0, };
 
 	memset(fileName, 0, FILENAME_MAX_LEN);
 	memset(tempName, 0, FILENAME_MAX_LEN);
@@ -138,7 +139,7 @@ void TestCase2(void)
 	for (i = 0; i < 4; i++) {
 		sprintf(tempName, "%s", fileName);
 		sprintf(tempName, "%s/%d.txt", tempName, i);
-		CreateFile(tempName);
+		fd[i]=CreateFile(tempName);
 	}
 
 	ListDirContents(fileName);
@@ -146,7 +147,7 @@ void TestCase2(void)
 	for (i = 0; i < 4; i++) {
 		sprintf(tempName, "%s", fileName);
 		sprintf(tempName, "%s/%d.txt", tempName, i);
-		CloseFile(tempName);
+		CloseFile(fd[i]);
 		RemoveFile(tempName);
 	}
 

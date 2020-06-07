@@ -582,6 +582,10 @@ int		MakeDir(const char* szDirName)
     DirEntry* dirEntry = NULL;
     FileSysInfo* filesys = NULL;
 
+    memset(dirName, 0, strlen(dirName));
+    memset(nextdirName, 0 , strlen(nextdirName));
+    memset(delRootName, 0, strlen(delRootName));
+
     // arg is not dir when root dir
     if(szDirName[0] != '/' && level == 0){
         perror("MakeDir(arg) arg is not directory");
@@ -614,20 +618,21 @@ int		MakeDir(const char* szDirName)
     }
     nextdirName[j] = '\0';
 
-    //printf("%s  %s\n", dirName, nextdirName);
-
     //root dir add szDirName
     pInode = (Inode*)malloc(sizeof(Inode));
     GetInode(level, pInode);
-    dirEntry = (DirEntry*)malloc(BLOCK_SIZE);
+
     if(pInode->type == FILE_TYPE_FILE){
         perror("Can not create file, not Directory\n");
         level = 0;
         return -1;
     }
+
+    dirEntry = (DirEntry*)malloc(BLOCK_SIZE);
     DevReadBlock(pInode->dirBlockPtr[0], (char*)dirEntry);
 
-    i = 0;
+    i = 0; j = 0;
+    if( i == NUM_OF_DIRENT_PER_BLOCK)
     while(strcmp(dirEntry[i].name, "EOD") != 0){
         if(strcmp(dirEntry[i].name, dirName) == 0){  //디렉토리가 존재할경우
             if(nextdirName[0] == '\0'){             //다음 디렉토리가 없을 경우 
@@ -649,7 +654,7 @@ int		MakeDir(const char* szDirName)
         return -1;
     }
     dirFreeIndex = 0;
-    while(strcmp(dirEntry[dirFreeIndex].name, "EOD")){//End of Directory
+    while(strcmp(dirEntry[dirFreeIndex].name, "EOD") != 0){//End of Directory
         dirFreeIndex++;
     }
     dirEntry[dirFreeIndex].inodeNum = inodeno;
@@ -786,11 +791,11 @@ int   EnumerateDirStatus(const char* szDirName, DirEntryInfo* pDirEntry, int dir
         GetInode(pDirEntry[i].inodeNum, pInode);
         pDirEntry[i].type = pInode->type;
 
-        if((strcmp(dirEntry[i].name, ".") == 0) || 
+/*         if((strcmp(dirEntry[i].name, ".") == 0) || 
             (strcmp(dirEntry[i].name, "..") == 0)){
                 pDirEntry[i].type = FILE_TYPE_DEV;      //??????
             }
-        
+         */
         retval++;
     }
 
