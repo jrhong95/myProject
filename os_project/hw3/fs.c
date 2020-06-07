@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <malloc.h>
 #include "disk.h"
 #include "fs.h"
 
@@ -575,7 +576,7 @@ int		MakeDir(const char* szDirName)
 {
     int blkno = GetFreeBlockNum();      //allocating block
     int inodeno = GetFreeInodeNum();    //allocating inode
-    int i, j, dirFreeIndex;
+    int i, j, dirFreeIndex, directPtrIndex = 0;
     char delRootName[strlen(szDirName)-1];
     char dirName[MAX_NAME_LEN], nextdirName[strlen(szDirName)-1];
     Inode* pInode = NULL;
@@ -618,6 +619,7 @@ int		MakeDir(const char* szDirName)
     }
     nextdirName[j] = '\0';
 
+
     //root dir add szDirName
     pInode = (Inode*)malloc(sizeof(Inode));
     GetInode(level, pInode);
@@ -629,11 +631,20 @@ int		MakeDir(const char* szDirName)
     }
 
     dirEntry = (DirEntry*)malloc(BLOCK_SIZE);
-    DevReadBlock(pInode->dirBlockPtr[0], (char*)dirEntry);
+    DevReadBlock(pInode->dirBlockPtr[directPtrIndex], (char*)dirEntry);
 
-    i = 0; j = 0;
-    if( i == NUM_OF_DIRENT_PER_BLOCK)
+    i = 0;
     while(strcmp(dirEntry[i].name, "EOD") != 0){
+        if(i == 31 && pInode->dirBlockPtr[directPtrIndex+1] == -1){ //next dptr is null
+            break;
+        }
+        else if(i == 31){
+            directPtrIndex++;
+            DevReadBlock(pInode->dirBlockPtr[directPtrIndex], (char*)dirEntry);
+            i = 0;
+            continue;
+        }
+
         if(strcmp(dirEntry[i].name, dirName) == 0){  //디렉토리가 존재할경우
             if(nextdirName[0] == '\0'){             //다음 디렉토리가 없을 경우 
                 perror("Already Exist Dir\n");
@@ -657,13 +668,29 @@ int		MakeDir(const char* szDirName)
     while(strcmp(dirEntry[dirFreeIndex].name, "EOD") != 0){//End of Directory
         dirFreeIndex++;
     }
+
+    filesys = (FileSysInfo*)malloc(BLOCK_SIZE);
+    DevReadBlock(FILESYS_INFO_BLOCK, (char*)filesys);
+
+    if(dirFreeIndex == 31){                         //Last Entry
+        directPtrIndex++;
+
+        pInode->dirBlockPtr[directPtrIndex] = blkno;
+        SetBlockBytemap(blkno);
+        filesys->numAllocBlocks++;
+        filesys->numFreeBlocks--;
+
+        dirEntry = (DirEntry*)malloc(BLOCK_SIZE);
+        dirFreeIndex = 0;
+        blkno = GetFreeBlockNum();
+    }
     dirEntry[dirFreeIndex].inodeNum = inodeno;
     strcpy(dirEntry[dirFreeIndex].name, dirName);
 
     //set End Dirname
     dirEntry[dirFreeIndex + 1].inodeNum = -1;
     strcpy(dirEntry[dirFreeIndex + 1].name, "EOD");
-    DevWriteBlock(pInode->dirBlockPtr[0], (char*)dirEntry);
+    DevWriteBlock(pInode->dirBlockPtr[directPtrIndex], (char*)dirEntry);
 
     //szDirName dir make
     dirEntry = (DirEntry*)malloc(BLOCK_SIZE);
@@ -688,8 +715,6 @@ int		MakeDir(const char* szDirName)
     SetInodeBytemap(inodeno);
 
     //change fileSysInfo
-    filesys = (FileSysInfo*)malloc(BLOCK_SIZE);
-    DevReadBlock(FILESYS_INFO_BLOCK, (char*)filesys);
     filesys->numAllocBlocks++;
     filesys->numFreeBlocks--;
     filesys->numAllocInodes++;
