@@ -12,7 +12,7 @@ int level = 0;  //inodex 탐색을 위한 전역변수
 //  입력받은 target의 inode number를 리턴한다
 //
 int OpenDir(const char* szDirName){
-    int inodeno, retval;
+    int inodeno, retval, dirPtrIndex = 0;
     int i, j;
     char delRootName[strlen(szDirName)-1];
     char dirName[MAX_NAME_LEN], nextdirName[strlen(szDirName)-1];
@@ -68,7 +68,7 @@ int OpenDir(const char* szDirName){
         level = 0;
         return -1;
     }
-    DevReadBlock(pInode->dirBlockPtr[0], (char*)dirEntry);
+    DevReadBlock(pInode->dirBlockPtr[dirPtrIndex], (char*)dirEntry);
 
     i = 0;
     while(strcmp(dirEntry[i].name, "EOD") != 0){
@@ -84,6 +84,10 @@ int OpenDir(const char* szDirName){
             return OpenDir(nextdirName);
         }
         i++;
+        if(i == 31 && pInode->dirBlockPtr[dirPtrIndex + 1] != -1){
+            DevReadBlock(pInode->dirBlockPtr[++dirPtrIndex], (char*)dirEntry);
+            i = 0;
+        }
     }
     // tokenize 이후 값과 이전의 값이 다를 경우-> 하위디렉토리가 존재하는 것
     //하위 디렉토리가 있는데 탐색하려던 디렉토리가 없는 경우
@@ -115,7 +119,7 @@ int		CreateFile(const char* szFileName)
 
     // arg is not dir when root dir
     if(szFileName[0] != '/' && level == 0){
-        perror("MakeDir(arg) arg is not directory");
+        perror("CreateFile(arg) arg is not directory");
         level = 0;
         return -1;
     }
@@ -144,7 +148,7 @@ int		CreateFile(const char* szFileName)
         j++;
     }
     nextName[j] = '\0';
-
+    
     //find Inode and block
     pInode = (Inode*)malloc(sizeof(Inode));
     GetInode(level, pInode);
@@ -242,7 +246,7 @@ int		OpenFile(const char* szFileName)
 
     // arg is not dir when root dir
     if(szFileName[0] != '/' && level == 0){
-        perror("MakeDir(arg) arg is not directory");
+        perror("OpenFile(arg) arg is not directory");
         return -1;
     }
 
@@ -574,8 +578,8 @@ int		RemoveFile(const char* szFileName)
 ////////////////////////////////////////////////////////////////////////////////
 int		MakeDir(const char* szDirName)
 {
-    int blkno = GetFreeBlockNum();      //allocating block
-    int inodeno = GetFreeInodeNum();    //allocating inode
+    int blkno;      //allocating block
+    int inodeno;   //allocating inode
     int i, j, dirFreeIndex, directPtrIndex = 0;
     char delRootName[strlen(szDirName)-1];
     char dirName[MAX_NAME_LEN], nextdirName[strlen(szDirName)-1];
@@ -583,9 +587,9 @@ int		MakeDir(const char* szDirName)
     DirEntry* dirEntry = NULL;
     FileSysInfo* filesys = NULL;
 
-    memset(dirName, 0, strlen(dirName));
-    memset(nextdirName, 0 , strlen(nextdirName));
-    memset(delRootName, 0, strlen(delRootName));
+    memset(dirName, 0, MAX_NAME_LEN);
+    memset(nextdirName, 0 , strlen(szDirName)-1);
+    memset(delRootName, 0, strlen(szDirName)-1);
 
     // arg is not dir when root dir
     if(szDirName[0] != '/' && level == 0){
@@ -594,31 +598,33 @@ int		MakeDir(const char* szDirName)
         return -1;
     }
 
-    // Delete '/'
+    // Delete '/'MakeD
     for(i = 0; i< strlen(szDirName) - 1; i++){
 	    delRootName[i] = szDirName[i+1];
 	}
     delRootName[strlen(szDirName)-1] = '\0';
     
 
-    // 현재 디렉토리와 다음 디렉토리 분리
+    // 현재 디렉토리와 다음 디렉토리 분리MakeD
     i = 0;
     while(delRootName[i] != '/' && delRootName[i] != '\0'){
         dirName[i] = delRootName[i];
         i++;
     }
     dirName[i] = '\0';
-    j = 0;
-    nextdirName[j] = delRootName[i];
-    i++;
-    j = 1;
-    while(delRootName[i] != '\0'){
+    if(strlen(dirName) != strlen(delRootName)){
+        j = 0;
         nextdirName[j] = delRootName[i];
         i++;
-        j++;
+        j = 1;
+        while(delRootName[i] != '\0'){
+            nextdirName[j] = delRootName[i];
+            i++;
+            j++;
+        }
+        nextdirName[j] = '\0';
     }
-    nextdirName[j] = '\0';
-
+    //\printf("%s  %s\n", dirName, nextdirName);
 
     //root dir add szDirName
     pInode = (Inode*)malloc(sizeof(Inode));
@@ -633,8 +639,9 @@ int		MakeDir(const char* szDirName)
     dirEntry = (DirEntry*)malloc(BLOCK_SIZE);
     DevReadBlock(pInode->dirBlockPtr[directPtrIndex], (char*)dirEntry);
 
-    i = 0;
+    i = -1;
     while(strcmp(dirEntry[i].name, "EOD") != 0){
+        i++;
         if(i == 31 && pInode->dirBlockPtr[directPtrIndex+1] == -1){ //next dptr is null
             break;
         }
@@ -654,7 +661,6 @@ int		MakeDir(const char* szDirName)
             level = dirEntry[i].inodeNum;
             return MakeDir(nextdirName);
         }
-        i++;
     }
     // tokenize 이후 값과 이전의 값이 다를 경우-> 하위디렉토리가 존재하는 것
 
@@ -671,19 +677,21 @@ int		MakeDir(const char* szDirName)
 
     filesys = (FileSysInfo*)malloc(BLOCK_SIZE);
     DevReadBlock(FILESYS_INFO_BLOCK, (char*)filesys);
-
+    blkno = GetFreeBlockNum();
     if(dirFreeIndex == 31){                         //Last Entry
         directPtrIndex++;
 
         pInode->dirBlockPtr[directPtrIndex] = blkno;
+        printf("new block: %d\n", blkno);
         SetBlockBytemap(blkno);
         filesys->numAllocBlocks++;
         filesys->numFreeBlocks--;
-
+        PutInode(level, pInode);
         dirEntry = (DirEntry*)malloc(BLOCK_SIZE);
         dirFreeIndex = 0;
         blkno = GetFreeBlockNum();
     }
+    inodeno = GetFreeInodeNum();
     dirEntry[dirFreeIndex].inodeNum = inodeno;
     strcpy(dirEntry[dirFreeIndex].name, dirName);
 
@@ -700,7 +708,9 @@ int		MakeDir(const char* szDirName)
     strcpy(dirEntry[1].name, "..");
     dirEntry[2].inodeNum = -1;
     strcpy(dirEntry[2].name, "EOD");
+    blkno = GetFreeBlockNum();
     DevWriteBlock(blkno, (char*)dirEntry);
+
 
     // Set Inode 
     pInode = (Inode*)malloc(sizeof(Inode));
@@ -709,6 +719,10 @@ int		MakeDir(const char* szDirName)
     pInode->size = 512;
     pInode->type = FILE_TYPE_DIR;
     pInode->dirBlockPtr[0] = blkno;
+    pInode->dirBlockPtr[1] = -1;
+    pInode->dirBlockPtr[2] = -1;
+    pInode->dirBlockPtr[3] = -1;
+    pInode->dirBlockPtr[4] = -1;
     PutInode(inodeno, pInode);
 
     SetBlockBytemap(blkno);
@@ -736,6 +750,7 @@ int		RemoveDir(const char* szDirName)
     int i, dirEntryIndex, curBlkNum, prevBlkNum;
     int prevInodeNo, curInodeNo = OpenDir(szDirName); // Open target dir
 
+    
     pInode = (Inode*)malloc(sizeof(Inode));
     GetInode(curInodeNo, pInode);
     curBlkNum = pInode->dirBlockPtr[0];
@@ -795,36 +810,37 @@ int		RemoveDir(const char* szDirName)
 int   EnumerateDirStatus(const char* szDirName, DirEntryInfo* pDirEntry, int dirEntrys)
 {
     int curInodeNo = OpenDir(szDirName);
-    int curBlkNum;
-    int i, retval = 0;
-    Inode *pInode = NULL;
+    int curBlkNum, directPtrIndex = 0;
+    int i, dentryCount = 0, retval = 0;
+    Inode *pInode = NULL, *newpInode = NULL;
     DirEntry *dirEntry = (DirEntry*)malloc(BLOCK_SIZE); 
 
     pInode = (Inode*)malloc(sizeof(Inode));
     GetInode(curInodeNo, pInode);
-    curBlkNum = pInode->dirBlockPtr[0];
+    curBlkNum = pInode->dirBlockPtr[directPtrIndex];
     DevReadBlock(curBlkNum, (char*)dirEntry);
 
-    for(i = 0; i < dirEntrys; i++){
-        if(dirEntry[i].inodeNum == -1)
+    for(i = 0; i <= dirEntrys; i++){
+        if(dirEntry[i].inodeNum == -1 && pInode->dirBlockPtr[directPtrIndex + 1] != -1){
+            curBlkNum = pInode->dirBlockPtr[++directPtrIndex];
+            DevReadBlock(curBlkNum, (char*)dirEntry);
+            i = -1;
+            continue;
+        }
+        else if(dirEntry[i].inodeNum == -1)
             break;
 
-        strcpy(pDirEntry[i].name, dirEntry[i].name);
-        pDirEntry[i].inodeNum = dirEntry[i].inodeNum;
+        strcpy(pDirEntry[dentryCount].name, dirEntry[i].name);
+        pDirEntry[dentryCount].inodeNum = dirEntry[i].inodeNum;
 
-        pInode = (Inode*)malloc(sizeof(Inode));
-        GetInode(pDirEntry[i].inodeNum, pInode);
-        pDirEntry[i].type = pInode->type;
+        newpInode = (Inode*)malloc(sizeof(Inode));
+        GetInode(pDirEntry[dentryCount].inodeNum, newpInode);
+        pDirEntry[dentryCount].type = newpInode->type;
 
-/*         if((strcmp(dirEntry[i].name, ".") == 0) || 
-            (strcmp(dirEntry[i].name, "..") == 0)){
-                pDirEntry[i].type = FILE_TYPE_DEV;      //??????
-            }
-         */
-        retval++;
+        dentryCount++;
     }
 
-    return retval;
+    return dentryCount;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -875,6 +891,10 @@ void	CreateFileSystem()
     pInode = (Inode*)malloc(sizeof(Inode));
     GetInode(inodeno, pInode);
     pInode->dirBlockPtr[0] = 7; //root dir block
+    pInode->dirBlockPtr[1] = -1;
+    pInode->dirBlockPtr[2] = -1;
+    pInode->dirBlockPtr[3] = -1;
+    pInode->dirBlockPtr[4] = -1;
     pInode->allocBlocks = 1;
     pInode->size = 512;
     pInode->type = FILE_TYPE_DIR;
