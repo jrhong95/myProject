@@ -97,9 +97,6 @@ int OpenDir(const char* szDirName){
     }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
 int		CreateFile(const char* szFileName)
 {
     int inodeno = GetFreeInodeNum();    //allocating inode
@@ -152,7 +149,7 @@ int		CreateFile(const char* szFileName)
     pInode = (Inode*)malloc(sizeof(Inode));
     GetInode(level, pInode);
     dirEntry = (DirEntry*)malloc(BLOCK_SIZE);
-    
+    //printf("%d %d %d %d\n",level, pInode->allocBlocks, pInode->size, pInode->type);
     if(pInode->type == FILE_TYPE_FILE){
         perror("Can not create file, not Directory");
         level = 0;
@@ -210,8 +207,6 @@ int		CreateFile(const char* szFileName)
     filesys->numAllocInodes++;
     DevWriteBlock(FILESYS_INFO_BLOCK, (char*)filesys);
     pFileSysInfo = filesys;
-    level = 0;
-    printf("file %s creates succuss\n", name);////////////////////////////////
 
     i = 0;
     while(pFileDesc[i].bUsed != 0){
@@ -223,12 +218,13 @@ int		CreateFile(const char* szFileName)
 
     pFileDesc[i].bUsed = 1;
     pFileDesc[i].pOpenFile = file;
-
+    level = 0;
+    //printf("file %s creates succuss fd: %d inode: %d\n", name, i, inodeno);////////////////////////////////
     return i;
 }
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
+
+
+
 int		OpenFile(const char* szFileName)
 {
     int inodeno = GetFreeInodeNum();    //allocating inode
@@ -333,9 +329,6 @@ int		OpenFile(const char* szFileName)
     return i;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
 int		WriteFile(int fileDesc, char* pBuffer, int length)
 {
     int blkno = GetFreeBlockNum();
@@ -351,11 +344,11 @@ int		WriteFile(int fileDesc, char* pBuffer, int length)
     //fd infomation save
     fdInode = pFileDesc[fileDesc].pOpenFile->inodeNum;
     offset = pFileDesc[fileDesc].pOpenFile->fileOffset;
-
+    
     //Update fd's inode
     pInode = (Inode*)malloc(sizeof(Inode));
     GetInode(fdInode, pInode);
-    freeLogicalBlockNum = offset / length;
+    freeLogicalBlockNum = (offset / length) + (offset % length);
     // file offset is bigger than Direct Block ptr num
     if(freeLogicalBlockNum >= NUM_OF_DIRECT_BLOCK_PTR){ 
         printf("file is full\n");
@@ -386,9 +379,6 @@ int		WriteFile(int fileDesc, char* pBuffer, int length)
     return length;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
 
 int		ReadFile(int fileDesc, char* pBuffer, int length)
 {
@@ -425,9 +415,6 @@ int		ReadFile(int fileDesc, char* pBuffer, int length)
     return length;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
 int		CloseFile(int fileDesc)
 {
     if(pFileDesc[fileDesc].bUsed == 0){
@@ -440,9 +427,8 @@ int		CloseFile(int fileDesc)
 
     return fileDesc;
 }
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
+
+
 int		RemoveFile(const char* szFileName)
 {
     int i, j, fileDirEntryIndex;
@@ -544,7 +530,7 @@ int		RemoveFile(const char* szFileName)
     DevReadBlock(FILESYS_INFO_BLOCK, (char*)filesys);
     // Reset allocated blocks
     for(i = 0; i < pInode->size / BLOCK_SIZE; i++){
-        blkno = pInode->allocBlocks;
+        blkno = pInode->dirBlockPtr[0];
         buf = (char*)calloc(BLOCK_SIZE, sizeof(char));
         DevWriteBlock(blkno, buf);
         ResetBlockBytemap(blkno);
@@ -572,9 +558,8 @@ int		RemoveFile(const char* szFileName)
     level = 0;
     return 0;
 }
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
+
+
 int		MakeDir(const char* szDirName)
 {
     int blkno;      //allocating block
@@ -888,9 +873,7 @@ int   EnumerateDirStatus(const char* szDirName, DirEntryInfo* pDirEntry, int dir
     return dentryCount;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////f
+
 void	CreateFileSystem()
 {
     int blkno, inodeno;

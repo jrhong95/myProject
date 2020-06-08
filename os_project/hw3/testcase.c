@@ -247,6 +247,7 @@ void TestCase4(void)
 			RemoveFile(fileName);
 		}	
 	}
+	PrintInodeBytemap();
 	printf(" ---- Test Case 4: files of even number removed ----\n");
 
 	for (i = 0; i < 5; i++)
@@ -263,6 +264,7 @@ void TestCase4(void)
 			CloseFile(fd);
 		}
 	}
+	PrintInodeBytemap();
 	printf(" ---- Test Case 4: files of odd number overwritten ----\n");
 
 	ListDirContents("/home/user3");
