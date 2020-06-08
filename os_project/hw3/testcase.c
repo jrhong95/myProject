@@ -245,7 +245,7 @@ void TestCase4(void)
 			memset(fileName, 0, FILENAME_MAX_LEN);
 			sprintf(fileName, "/home/user3/file%d", i);
 			RemoveFile(fileName);
-		}
+		}	
 	}
 	printf(" ---- Test Case 4: files of even number removed ----\n");
 

@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/a.out",
-            "args": ["format", "1"],
+            "args": ["readwrite", "4"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],
