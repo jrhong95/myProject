@@ -681,7 +681,6 @@ int		MakeDir(const char* szDirName)
         directPtrIndex++;
 
         pInode->dirBlockPtr[directPtrIndex] = blkno;
-        printf("new block: %d\n", blkno);
         SetBlockBytemap(blkno);
         filesys->numAllocBlocks++;
         filesys->numFreeBlocks--;
@@ -734,7 +733,7 @@ int		MakeDir(const char* szDirName)
     DevWriteBlock(FILESYS_INFO_BLOCK, (char*)filesys);
     pFileSysInfo = filesys;
     level = 0;
-    printf("Directory %s creates succuss\n", dirName);
+    //printf("Directory %s creates succuss\n", dirName);
     return 0;
 }
 
@@ -748,7 +747,7 @@ int		RemoveDir(const char* szDirName)
     FileSysInfo *filesys = NULL;
     int i, dirEntryIndex, curBlkNum, prevBlkNum, dirBlkPtrIndex = 0;
     int prevInodeNo, curInodeNo = OpenDir(szDirName); // Open target dir
-    char *curDirName;
+    char *curDirName, copyDirName[strlen(szDirName)];
     
     pInode = (Inode*)malloc(sizeof(Inode));
     GetInode(curInodeNo, pInode);
@@ -762,10 +761,11 @@ int		RemoveDir(const char* szDirName)
     }
     // OpenDir을 통해 디렉토리 검사 끝남
     prevInodeNo = 0;
-    curDirName = strtok(szDirName, "/");
+    strcpy(copyDirName, szDirName);
+    curDirName = strtok(copyDirName, "/");
     while(strcmp(curDirName, "") != 0){
         GetInode(prevInodeNo, pInode);
-        printf("curname: %s\n", curDirName);
+        //printf("curname: %s\n", curDirName);
         prevBlkNum = pInode->dirBlockPtr[dirBlkPtrIndex];
         DevReadBlock(prevBlkNum, (char*)dirEntry);
         i = 0;
@@ -779,13 +779,15 @@ int		RemoveDir(const char* szDirName)
                 continue;
             }
         }
-        prevInodeNo = dirEntry[i].inodeNum;
+        
         if(dirEntry[i].inodeNum == curInodeNo)
             break;
-
+        else
+            prevInodeNo = dirEntry[i].inodeNum;
+        
         curDirName = strtok(NULL, "/");
     }
-    printf("prevBlkNum: %d, prevInodeNum: %d\n", prevBlkNum, prevInodeNo);
+    //printf("prevBlkNum: %d, prevInodeNum: %d\n", prevBlkNum, prevInodeNo);
 
     // Delete target dir inode 
     pInode = (Inode*)calloc(sizeof(Inode)/sizeof(int), sizeof(int));
@@ -802,7 +804,7 @@ int		RemoveDir(const char* szDirName)
     //Prev Directory Inode & block Read
     pInode = (Inode*)malloc(sizeof(Inode));
     GetInode(prevInodeNo, pInode);
-    prevBlkNum = pInode->dirBlockPtr[0];
+    prevBlkNum = pInode->dirBlockPtr[dirBlkPtrIndex];
     dirEntry = (DirEntry*)malloc(BLOCK_SIZE);
     DevReadBlock(prevBlkNum, (char*)dirEntry);
 
@@ -811,22 +813,42 @@ int		RemoveDir(const char* szDirName)
     while(dirEntry[dirEntryIndex].inodeNum != curInodeNo){
         dirEntryIndex++;
     }
-    //Delete target dir & logical block update
-    while(strcmp(dirEntry[dirEntryIndex].name, "EOD") != 0){
-        strcpy(dirEntry[dirEntryIndex].name, dirEntry[dirEntryIndex + 1].name); //next dir copy
-        dirEntry[dirEntryIndex].inodeNum = dirEntry[dirEntryIndex + 1].inodeNum;
-        dirEntryIndex++;
-    }
-    DevWriteBlock(prevBlkNum, (char*)dirEntry);
-    // File System Update
     filesys = (FileSysInfo*)malloc(BLOCK_SIZE);
     DevReadBlock(FILESYS_INFO_BLOCK, (char*)filesys);
+    
+    if(dirEntryIndex == 0){
+        //블럭이 비었을 때
+        dirEntry = (DirEntry*)calloc(NUM_OF_DIRENT_PER_BLOCK, sizeof(DirEntry));
+        DevWriteBlock(prevBlkNum, (char*)dirEntry);
+        GetInode(prevInodeNo, pInode);
+        pInode->dirBlockPtr[dirBlkPtrIndex] = -1;
+        PutInode(prevInodeNo, pInode);
+        filesys->numAllocBlocks--;
+        filesys->numFreeBlocks++;
+        ResetBlockBytemap(prevBlkNum);
+        //printf("blk delete %d\n", prevBlkNum);
+    }
+    else{
+        //Delete target dir & logical block update
+        while(strcmp(dirEntry[dirEntryIndex].name, "EOD") != 0){
+            strcpy(dirEntry[dirEntryIndex].name, dirEntry[dirEntryIndex + 1].name); //next dir copy
+            dirEntry[dirEntryIndex].inodeNum = dirEntry[dirEntryIndex + 1].inodeNum;
+            dirEntryIndex++;
+        }
+        DevWriteBlock(prevBlkNum, (char*)dirEntry);
+        /* for(i = 0; i < 32; i++){
+            if(dirEntry[i].inodeNum == -1)
+                break;
+            printf("dirEntry[dirEntryIndex].name : %s %d\n", dirEntry[i].name, dirEntry[i].inodeNum);
+        } */
+    }
+    // File System Update
     filesys->numAllocBlocks--;
     filesys->numAllocInodes--;
     filesys->numFreeBlocks++;
     DevWriteBlock(FILESYS_INFO_BLOCK, (char*)filesys);
     pFileSysInfo = filesys;
-    printf("RemoveDir success\n");
+    //printf("RemoveDir success\n");
     return 0;
 }
 
@@ -842,7 +864,7 @@ int   EnumerateDirStatus(const char* szDirName, DirEntryInfo* pDirEntry, int dir
     GetInode(curInodeNo, pInode);
     curBlkNum = pInode->dirBlockPtr[directPtrIndex];
     DevReadBlock(curBlkNum, (char*)dirEntry);
-
+    
     for(i = 0; i <= dirEntrys; i++){
         if(dirEntry[i].inodeNum == -1 && pInode->dirBlockPtr[directPtrIndex + 1] != -1){
             curBlkNum = pInode->dirBlockPtr[++directPtrIndex];
