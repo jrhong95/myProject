@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <malloc.h>
 #include "disk.h"
 #include "fs.h"
 
@@ -747,23 +746,46 @@ int		RemoveDir(const char* szDirName)
     Inode *pInode = NULL;
     DirEntry *dirEntry = (DirEntry*)malloc(BLOCK_SIZE);
     FileSysInfo *filesys = NULL;
-    int i, dirEntryIndex, curBlkNum, prevBlkNum;
+    int i, dirEntryIndex, curBlkNum, prevBlkNum, dirBlkPtrIndex = 0;
     int prevInodeNo, curInodeNo = OpenDir(szDirName); // Open target dir
-
+    char *curDirName;
     
     pInode = (Inode*)malloc(sizeof(Inode));
     GetInode(curInodeNo, pInode);
     curBlkNum = pInode->dirBlockPtr[0];
-
     DevReadBlock(curBlkNum, (char*)dirEntry);
+
     // szDir is not Empty
     if(strcmp(dirEntry[2].name, "EOD") != 0){
         printf("%s is not Empty\n", szDirName);
         return -1;
     }
+    // OpenDir을 통해 디렉토리 검사 끝남
+    prevInodeNo = 0;
+    curDirName = strtok(szDirName, "/");
+    while(strcmp(curDirName, "") != 0){
+        GetInode(prevInodeNo, pInode);
+        printf("curname: %s\n", curDirName);
+        prevBlkNum = pInode->dirBlockPtr[dirBlkPtrIndex];
+        DevReadBlock(prevBlkNum, (char*)dirEntry);
+        i = 0;
+        while(strcmp(dirEntry[i].name, curDirName) != 0){
+            i++;
+            if(i == 31 && pInode->dirBlockPtr[dirBlkPtrIndex + 1] != 0){
+                dirBlkPtrIndex++;
+                i = 0;
+                prevBlkNum = pInode->dirBlockPtr[dirBlkPtrIndex];
+                DevReadBlock(prevBlkNum, (char*)dirEntry);
+                continue;
+            }
+        }
+        prevInodeNo = dirEntry[i].inodeNum;
+        if(dirEntry[i].inodeNum == curInodeNo)
+            break;
 
-    prevInodeNo = dirEntry[1].inodeNum;
-    curInodeNo = dirEntry[0].inodeNum;
+        curDirName = strtok(NULL, "/");
+    }
+    printf("prevBlkNum: %d, prevInodeNum: %d\n", prevBlkNum, prevInodeNo);
 
     // Delete target dir inode 
     pInode = (Inode*)calloc(sizeof(Inode)/sizeof(int), sizeof(int));
@@ -804,6 +826,7 @@ int		RemoveDir(const char* szDirName)
     filesys->numFreeBlocks++;
     DevWriteBlock(FILESYS_INFO_BLOCK, (char*)filesys);
     pFileSysInfo = filesys;
+    printf("RemoveDir success\n");
     return 0;
 }
 
