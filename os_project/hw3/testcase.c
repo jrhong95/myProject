@@ -111,6 +111,7 @@ void TestCase1(void)
 	RemoveDir("/etc");
 	RemoveDir("/usr");
 	RemoveDir("/tmp");
+	printf("Total allocated blocks: %d\nTotal allocated Inodes: %d\n", pFileSysInfo->numAllocBlocks, pFileSysInfo->numAllocInodes);
 }
 
 
@@ -155,6 +156,7 @@ void TestCase2(void)
 		ListDirContents(paths[i]);
 		RemoveDir(paths[i]);
 	}
+	printf("Total allocated blocks: %d\nTotal allocated Inodes: %d\n", pFileSysInfo->numAllocBlocks, pFileSysInfo->numAllocInodes);
 }
 
 void TestCase3(void) {
@@ -187,7 +189,7 @@ void TestCase3(void) {
 			free(str);
 		}
 	}
-
+	ListDirContents("/home/test");
 	for (i = 0; i < 4; i++)
 		CloseFile(fd[i]);
 
@@ -213,6 +215,7 @@ void TestCase3(void) {
 			cIndex++;
 		}
 	}
+	printf("Total allocated blocks: %d\nTotal allocated Inodes: %d\n", pFileSysInfo->numAllocBlocks, pFileSysInfo->numAllocInodes);
 }
 
 void TestCase4(void)
@@ -287,6 +290,7 @@ void TestCase4(void)
 	printf(" ---- Test Case 4: files of even number re-created & written ----\n");
 
 	ListDirContents("/home/user3");
+	printf("Total allocated blocks: %d\nTotal allocated Inodes: %d\n", pFileSysInfo->numAllocBlocks, pFileSysInfo->numAllocInodes);
 }
 int main(int argc, char** argv)
 {

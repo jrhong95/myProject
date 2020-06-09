@@ -213,7 +213,7 @@ int		CreateFile(const char* szFileName)
         i++;
     }
     file = (File*)malloc(sizeof(File));
-    file->fileOffset = i;
+    file->fileOffset = 0;
     file->inodeNum = inodeno;
 
     pFileDesc[i].bUsed = 1;
@@ -331,8 +331,8 @@ int		OpenFile(const char* szFileName)
 
 int		WriteFile(int fileDesc, char* pBuffer, int length)
 {
-    int blkno = GetFreeBlockNum();
-    int fdInode, offset, freeLogicalBlockNum;
+    int blkno, writeSize;
+    int fdInode, offset, curDirBlkPtrIndex = 0;
     Inode *pInode = NULL;
     FileSysInfo *filesys = NULL;
     char *buf = NULL;
@@ -344,45 +344,48 @@ int		WriteFile(int fileDesc, char* pBuffer, int length)
     //fd infomation save
     fdInode = pFileDesc[fileDesc].pOpenFile->inodeNum;
     offset = pFileDesc[fileDesc].pOpenFile->fileOffset;
-    
     //Update fd's inode
+    writeSize = (int)strlen(pBuffer) < length ? (int)strlen(pBuffer) : length;
+
     pInode = (Inode*)malloc(sizeof(Inode));
     GetInode(fdInode, pInode);
-    freeLogicalBlockNum = (offset / length) + (offset % length);
+    curDirBlkPtrIndex = offset / BLOCK_SIZE;
     // file offset is bigger than Direct Block ptr num
-    if(freeLogicalBlockNum >= NUM_OF_DIRECT_BLOCK_PTR){ 
+    if(curDirBlkPtrIndex >= NUM_OF_DIRECT_BLOCK_PTR){ 
         printf("file is full\n");
         return -1;
     }
-    pInode->dirBlockPtr[freeLogicalBlockNum] = blkno;
-    pInode->allocBlocks++;
-    pInode->size += length;
-    PutInode(fdInode, pInode);
-
-    //Update FileSysInfo Block
     filesys = (FileSysInfo*)malloc(BLOCK_SIZE);
     DevReadBlock(FILESYS_INFO_BLOCK, (char*)filesys);
-    filesys->numAllocBlocks++;
-    filesys->numFreeBlocks--;
+
+    if((pInode->size / BLOCK_SIZE) != (pInode->size + writeSize / BLOCK_SIZE)){
+        blkno = GetFreeBlockNum();
+        pInode->dirBlockPtr[curDirBlkPtrIndex] = blkno;
+        pInode->allocBlocks++;
+        filesys->numAllocBlocks++;
+        filesys->numFreeBlocks--;
+        SetBlockBytemap(blkno);
+    }
+    pInode->size += writeSize;
+    PutInode(fdInode, pInode);
+    //Update FileSysInfo Block
     DevWriteBlock(FILESYS_INFO_BLOCK, (char*)filesys);
     pFileSysInfo = filesys;
-
-    SetBlockBytemap(blkno);
     //FileOffset += BLOCK_SIZE
-    pFileDesc[fileDesc].pOpenFile->fileOffset += length;
+    pFileDesc[fileDesc].pOpenFile->fileOffset += writeSize;
 
     //Write buffer to block
     buf = (char*)malloc(BLOCK_SIZE);
-    buf = pBuffer;
+    memcpy(buf, pBuffer, writeSize);
     DevWriteBlock(blkno, buf);
 
-    return length;
+    return writeSize;
 }
 
 
 int		ReadFile(int fileDesc, char* pBuffer, int length)
 {
-    int blkno ;
+    int blkno, readSize;
     int fdInode, offset, curLogicalBlockNum;
     Inode *pInode = NULL;
     char *buf = NULL;
@@ -394,7 +397,7 @@ int		ReadFile(int fileDesc, char* pBuffer, int length)
 
     fdInode = pFileDesc[fileDesc].pOpenFile->inodeNum;
     offset = pFileDesc[fileDesc].pOpenFile->fileOffset;
-
+    readSize = (int)strlen(pBuffer) < length ? (int)strlen(pBuffer) : length;
     //Get Inode Info
     pInode = (Inode*)malloc(sizeof(Inode));
     GetInode(fdInode, pInode);
@@ -410,9 +413,10 @@ int		ReadFile(int fileDesc, char* pBuffer, int length)
     DevReadBlock(blkno, buf);
 
     pBuffer = buf;
+    memcpy(pBuffer, buf, readSize);
     pFileDesc[fileDesc].pOpenFile->fileOffset += length;
 
-    return length;
+    return readSize;
 }
 
 int		CloseFile(int fileDesc)
@@ -666,6 +670,8 @@ int		MakeDir(const char* szDirName)
         directPtrIndex++;
 
         pInode->dirBlockPtr[directPtrIndex] = blkno;
+        pInode->size += BLOCK_SIZE;
+        pInode->allocBlocks++;
         SetBlockBytemap(blkno);
         filesys->numAllocBlocks++;
         filesys->numFreeBlocks--;
@@ -807,6 +813,8 @@ int		RemoveDir(const char* szDirName)
         DevWriteBlock(prevBlkNum, (char*)dirEntry);
         GetInode(prevInodeNo, pInode);
         pInode->dirBlockPtr[dirBlkPtrIndex] = -1;
+        pInode->size -= BLOCK_SIZE;
+        pInode->allocBlocks--;
         PutInode(prevInodeNo, pInode);
         filesys->numAllocBlocks--;
         filesys->numFreeBlocks++;
