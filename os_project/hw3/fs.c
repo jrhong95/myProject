@@ -205,6 +205,7 @@ int		CreateFile(const char* szFileName)
     filesys = (FileSysInfo*)malloc(BLOCK_SIZE);
     DevReadBlock(FILESYS_INFO_BLOCK, (char*)filesys);
     filesys->numAllocInodes++;
+
     DevWriteBlock(FILESYS_INFO_BLOCK, (char*)filesys);
     pFileSysInfo = filesys;
 
@@ -219,11 +220,8 @@ int		CreateFile(const char* szFileName)
     pFileDesc[i].bUsed = 1;
     pFileDesc[i].pOpenFile = file;
     level = 0;
-    //printf("file %s creates succuss fd: %d inode: %d\n", name, i, inodeno);////////////////////////////////
     return i;
 }
-
-
 
 int		OpenFile(const char* szFileName)
 {
@@ -358,7 +356,9 @@ int		WriteFile(int fileDesc, char* pBuffer, int length)
     filesys = (FileSysInfo*)malloc(BLOCK_SIZE);
     DevReadBlock(FILESYS_INFO_BLOCK, (char*)filesys);
 
-    if((pInode->size / BLOCK_SIZE) != (pInode->size + writeSize / BLOCK_SIZE)){
+    if(((pInode->size / BLOCK_SIZE) != ((pInode->size + writeSize) / BLOCK_SIZE))
+         || pInode->size == 0)
+    {
         blkno = GetFreeBlockNum();
         pInode->dirBlockPtr[curDirBlkPtrIndex] = blkno;
         pInode->allocBlocks++;
@@ -532,6 +532,7 @@ int		RemoveFile(const char* szFileName)
 
     filesys = (FileSysInfo*)malloc(BLOCK_SIZE);
     DevReadBlock(FILESYS_INFO_BLOCK, (char*)filesys);
+
     // Reset allocated blocks
     for(i = 0; i < pInode->size / BLOCK_SIZE; i++){
         blkno = pInode->dirBlockPtr[0];
@@ -902,7 +903,7 @@ void	CreateFileSystem()
 
     //pFileSysInfo Init
     pFileSysInfo = (FileSysInfo*)malloc(BLOCK_SIZE);
-    pFileSysInfo->blocks = 7;                        //0~6 block
+    pFileSysInfo->blocks = 512;                       
     pFileSysInfo->rootInodeNum = 0;                  //
     pFileSysInfo->diskCapacity = FS_DISK_CAPACITY;   
     pFileSysInfo->numAllocBlocks = 0;               //
@@ -940,7 +941,10 @@ void	CreateFileSystem()
 
 void	OpenFileSystem()
 {
+    FileSysInfo *filesys = (FileSysInfo*)malloc(BLOCK_SIZE);
     DevOpenDisk();
+    DevReadBlock(FILESYS_INFO_BLOCK, (char*)filesys);
+    pFileSysInfo = filesys;
 }
 
 
