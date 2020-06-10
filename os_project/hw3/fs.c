@@ -331,6 +331,7 @@ int		WriteFile(int fileDesc, char* pBuffer, int length)
 {
     int blkno, writeSize;
     int fdInode, offset, curDirBlkPtrIndex = 0;
+    int blkCnt, i;
     Inode *pInode = NULL;
     FileSysInfo *filesys = NULL;
     char *buf = NULL;
@@ -343,7 +344,7 @@ int		WriteFile(int fileDesc, char* pBuffer, int length)
     fdInode = pFileDesc[fileDesc].pOpenFile->inodeNum;
     offset = pFileDesc[fileDesc].pOpenFile->fileOffset;
     //Update fd's inode
-    writeSize = (int)strlen(pBuffer) < length ? (int)strlen(pBuffer) : length;
+    writeSize = length;
 
     pInode = (Inode*)malloc(sizeof(Inode));
     GetInode(fdInode, pInode);
@@ -355,16 +356,25 @@ int		WriteFile(int fileDesc, char* pBuffer, int length)
     }
     filesys = (FileSysInfo*)malloc(BLOCK_SIZE);
     DevReadBlock(FILESYS_INFO_BLOCK, (char*)filesys);
-
+    
     if(((pInode->size / BLOCK_SIZE) != ((pInode->size + writeSize) / BLOCK_SIZE))
          || pInode->size == 0)
     {
-        blkno = GetFreeBlockNum();
-        pInode->dirBlockPtr[curDirBlkPtrIndex] = blkno;
-        pInode->allocBlocks++;
-        filesys->numAllocBlocks++;
-        filesys->numFreeBlocks--;
-        SetBlockBytemap(blkno);
+        blkCnt = (pInode->size + writeSize) / BLOCK_SIZE;
+        if((pInode->size + writeSize) % BLOCK_SIZE != 0){
+            blkCnt++;
+        }
+
+        for(i = 0; i < blkCnt; i++){
+            if(pInode->dirBlockPtr[i] == -1){
+                blkno = GetFreeBlockNum();
+                pInode->dirBlockPtr[i] = blkno;
+                pInode->allocBlocks++;
+                filesys->numAllocBlocks++;
+                filesys->numFreeBlocks--;
+                SetBlockBytemap(blkno);
+            }
+        }
     }
     pInode->size += writeSize;
     PutInode(fdInode, pInode);
