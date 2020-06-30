@@ -49,29 +49,34 @@ int pmq_close(pmqd_t mqd)
 {
     if(qcbTblEntry[mqd].bUsed == 0) //Qcb가 없는 경우
         return -1;
-    else if(qcbTblEntry[mqd].openCount > 1){
+    else{
         qcbTblEntry[mqd].openCount--;//Qcb count -1
     }
-    else{                           //Qcb초기화
-        qcbTblEntry[mqd].openCount = 0;
-        free(qcbTblEntry[mqd].pQcb);
-        qcbTblEntry[mqd].pQcb = NULL;
-        strcpy(qcbTblEntry[mqd].name, "");
-        qcbTblEntry[mqd].mode = 0;
-        qcbTblEntry[mqd].bUsed = 0;
-    }
+    // else{                           //Qcb초기화
+    //     qcbTblEntry[mqd].openCount = 0;
+    //     free(qcbTblEntry[mqd].pQcb);
+    //     qcbTblEntry[mqd].pQcb = NULL;
+    //     strcpy(qcbTblEntry[mqd].name, "");
+    //     qcbTblEntry[mqd].mode = 0;
+    //     qcbTblEntry[mqd].bUsed = 0;
+    // }
     return 0;
 }
 int pmq_send(pmqd_t mqd, char* msg_ptr, size_t msg_len, unsigned int msg_prio)
 {
     Message *newMsg;
     Message *msgListHead, *msgListTail, *curMsg, *prevMsg;
+    Thread * waitThread;
 
     if(qcbTblEntry[mqd].bUsed == 0){
         perror("Can't open MessageQueue");
         return -1;
     }
-
+    if(qcbTblEntry[mqd].pQcb->waitThreadCount > 0){
+       waitThread = DeleteToWaitQueueHead(mqd);
+       InsertToReadyQueue(waitThread);
+       waitThread->status = THREAD_STATUS_READY;
+    }
     //Copy to new Message obj 
     newMsg = (Message *)malloc(sizeof(Message));
     strcpy(newMsg->data, msg_ptr);
@@ -123,24 +128,33 @@ ssize_t pmq_receive(pmqd_t mqd, char* msg_ptr, size_t msg_len, unsigned int* msg
     pid_t tid = thread_self();
     Thread *curThread = pThreadTblEnt[tid].pThread;
     int retVal;
-    if(qcbTblEntry[mqd].openCount == 0){    //msqList가 비어있는 경우
+
+    if(qcbTblEntry[mqd].pQcb->msgCount == 0){    //msqList가 비어있는 경우
         //sigstop
-        DeleleToReadyQueue(curThread->priority, curThread->pid);
+        //printf("Test1\n");
+        //DeleleToReadyQueue(curThread->priority, curThread->pid);
         InsertToWaitQueue(mqd, curThread);
+        pCurrentThread = FindNextinReadyQueue();
+        pCurrentThread->status = THREAD_STATUS_RUN;
+        //printf("%d is current head\n", pCurrentThread->pid);
+        kill(pCurrentThread->pid, SIGCONT);
+        kill(getpid(), SIGSTOP);
     }
 
+    //printf("Test2\n");
+    
     curMsg = qcbTblEntry[mqd].pQcb->pMsgHead;
     strcpy(msg_ptr, curMsg->data);
     *msg_prio = curMsg->priority;
-    qcbTblEntry[mqd].openCount--;
+    qcbTblEntry[mqd].pQcb->msgCount--;
     if(qcbTblEntry[mqd].pQcb->pMsgHead == qcbTblEntry[mqd].pQcb->pMsgTail){
         qcbTblEntry[mqd].pQcb->pMsgHead = NULL;
         qcbTblEntry[mqd].pQcb->pMsgTail = NULL;
     }
     else{
         qcbTblEntry[mqd].pQcb->pMsgHead = curMsg->pPrev;
-        curMsg->pPrev = NULL;
         curMsg->pPrev->pNext = NULL;
+        curMsg->pPrev = NULL;
     }
     retVal = curMsg->size;
     free(curMsg);

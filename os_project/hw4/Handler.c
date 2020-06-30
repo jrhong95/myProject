@@ -1,7 +1,7 @@
 #include "Handler.h" 
 
 void RR_handler(int sig){
-    if(!IsReadyQueueEmpty()){ //ReadyQ not empty
+    if(!IsReadyQueueEmpty() || pCurrentThread != NULL){ //ReadyQ not empty
         Thread* cur;
         Thread* next;
 
@@ -23,5 +23,6 @@ void RR_handler(int sig){
         __ContextSwitch(cur->pid, next->pid);
         //PrintReadyQueue();
     }
+    //printf("Alarm!\n");
     alarm(TIMESLICE);
 }

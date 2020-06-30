@@ -5,7 +5,7 @@
 #include <stdio.h>
 
 
-#define CLONE_FLAG ( CLONE_VM | CLONE_SIGHAND | CLONE_FS | CLONE_FILES | SIGCHLD )
+#define CLONE_FLAG ( CLONE_VM | CLONE_SIGHAND | CLONE_FS | CLONE_FILES | SIGCHLD)
 
 Thread* parent;
 Thread* child;
@@ -24,7 +24,7 @@ int thread_create(thread_t *thread, thread_attr_t *attr, int priority, void *(*s
     }
 
     pid = clone((int(*)(void*))(*start_routine), (char*)stack + STACK_SIZE, CLONE_FLAG, arg);
-
+    printf("Thread %d created\n", pid);
     kill(pid, SIGSTOP);
     
     tcb->stackSize = STACK_SIZE;
@@ -78,7 +78,7 @@ int thread_create(thread_t *thread, thread_attr_t *attr, int priority, void *(*s
 //         DeleteToWaitQueue(targetThread->pid);
 //         InsertToWaitQueue(targetThread);
 //     }
-//     else if(targetThread == pCurrentThread){
+//     else if(targetThread == pCurrentThre	printf("??\n");ad){
 //         InsertToWaitQueue(targetThread);
 //         return 0;
 //     }
@@ -91,30 +91,30 @@ int thread_create(thread_t *thread, thread_attr_t *attr, int priority, void *(*s
 //     return 0;
 // }
 
-// int thread_cancel(thread_t tid) //thread id
-// {
-//     Thread* targetThread = pThreadTblEnt[tid].pThread;
+int thread_cancel(thread_t tid) //thread id
+{
+    Thread* targetThread = pThreadTblEnt[tid].pThread;
 
-//     if(targetThread == NULL) {
-//         perror("thread_cancel error");
-//         return -1;
-//     }
-//     kill(targetThread->pid, SIGKILL);
-//     if(targetThread->status == THREAD_STATUS_READY)     //In ready Q
-//         DeleleToReadyQueue(targetThread->priority, targetThread->pid);
-//     else if(targetThread->status == THREAD_STATUS_WAIT) //In wait Q
-//         DeleteToWaitQueue(targetThread->pid);
-//     else if(targetThread->status == THREAD_STATUS_RUN){
-//         pCurrentThread = NULL;
-//     }
-//     pThreadTblEnt[tid].bUsed = 0;
-//     pThreadTblEnt[tid].pThread = NULL;
+    if(targetThread == NULL) {
+        perror("thread_cancel error");
+        return -1;
+    }
+    kill(targetThread->pid, SIGKILL);
+    if(targetThread->status == THREAD_STATUS_READY)     //In ready Q
+        DeleleToReadyQueue(targetThread->priority, targetThread->pid);
+    else if(targetThread->status == THREAD_STATUS_WAIT) //In wait Q
+        DeleteToWaitQueue(targetThread->pid);
+    else if(targetThread->status == THREAD_STATUS_RUN){
+        pCurrentThread = NULL;
+    }
+    pThreadTblEnt[tid].bUsed = 0;
+    pThreadTblEnt[tid].pThread = NULL;
 
-//     free(targetThread->stackAddr);
-//     free(targetThread);
+    free(targetThread->stackAddr);
+    free(targetThread);
 
-//     return 0;
-// }
+    return 0;
+}
 
 // int thread_resume(thread_t tid)
 // {
@@ -222,25 +222,25 @@ thread_t thread_self()
 // }
 
 
-// int thread_exit(void* retval){
-//     Thread* target = pThreadTblEnt[TableSearch_Thread(getpid())].pThread;
+int thread_exit(void* retval){
+    Thread* target = pThreadTblEnt[TableSearch_Thread(getpid())].pThread;
 
-//     if(target == NULL)
-//         return -1;
+    if(target == NULL)
+        return -1;
 
-//     target->exitCode = *((int*)retval);
+    target->exitCode = *((int*)retval);
     
-//     InsertToWaitQueue(target);
-//     target->status = THREAD_STATUS_ZOMBIE;
+    InsertToWaitQueue(0, target);
+    target->status = THREAD_STATUS_ZOMBIE;
 
-//     if(IsReadyQueueEmpty()){
-//         pCurrentThread = NULL;
-//     }
-//     else{
-//         pCurrentThread = FindNextinReadyQueue();
-//         pCurrentThread->status = THREAD_STATUS_RUN;
-//         kill(pCurrentThread->pid, SIGCONT);
-//     }
-//     exit(0);
-//     return 0;
-// }
+    if(IsReadyQueueEmpty()){
+        pCurrentThread = NULL;
+    }
+    else{
+        pCurrentThread = FindNextinReadyQueue();
+        pCurrentThread->status = THREAD_STATUS_RUN;
+        kill(pCurrentThread->pid, SIGCONT);
+    }
+    exit(0);
+    return 0;
+}

@@ -5,7 +5,7 @@ void* Tc1ThreadSender(void* param)
 	pmqd_t mq,pmq;
 	char msg[MAX_MSG_LEN];
 	int i;
-
+	//printf("%d start\n", getpid());
 	mq=pmq_open("mq2",O_CREAT,O_RDWR,NULL);
 	pmq=pmq_open("mq1",O_CREAT,O_RDWR,NULL);
 
@@ -21,6 +21,7 @@ void* Tc1ThreadSender(void* param)
 
 	pmq_close(mq);
 	pmq_close(pmq);
+	//printf("%d end\n", getpid());
 	return NULL;
 }
 
@@ -30,7 +31,7 @@ void* Tc1ThreadReceiver(void* param)
 	char msg[MAX_MSG_LEN];
 	int i;
 	int msg_prio;
-
+	//printf("%d start\n", getpid());
 	mq=pmq_open("mq2",O_CREAT,O_RDWR,NULL);
 	pmq=pmq_open("mq1",O_CREAT,O_RDWR,NULL);
 
@@ -46,6 +47,7 @@ void* Tc1ThreadReceiver(void* param)
 
 	pmq_close(mq);
 	pmq_close(pmq);
+	//printf("%d end\n", getpid());
 	return NULL;
 }
 
@@ -59,17 +61,19 @@ void TestCase1(void)
 	mq=pmq_open("mq1",O_CREAT,O_RDWR,NULL);
 
 	thread_create(&tid[0], NULL, 1, (void*)Tc1ThreadSender,0);
-
+	//printf("%d created\n", tid[0]);
 	memset(msg,0,MAX_MSG_LEN);
 	pmq_receive(mq,msg,MAX_MSG_LEN,&i);
 	printf("%s\n",msg);
-
+	
 	thread_create(&tid[1], NULL, 1, (void*)Tc1ThreadReceiver,0);
-
+	//printf("%d created\n", tid[1]);	
 	memset(msg,0,MAX_MSG_LEN);
 	pmq_receive(mq,msg,MAX_MSG_LEN,&i);
 	printf("%s\n",msg);
 
 	pmq_close(mq);
+	//while(1);
 	return ;
 }
+
