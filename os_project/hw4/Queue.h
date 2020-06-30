@@ -12,7 +12,8 @@
 void InsertToReadyQueue(Thread *tcb);
 Thread* DeleleToReadyQueue(int priority, pid_t pid);
 
-void InsertToWaitQueue(int mqd, Thread *tcb);
+void InsertToWaitQueue(Thread *tcb);
+void InsertToQcbWaitQueue(int mqd, Thread *tcb);
 Thread* DeleteToWaitQueueHead(int mqd);
 Thread* DeleteToWaitQueue(pid_t pid);
 

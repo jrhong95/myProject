@@ -24,7 +24,7 @@ int thread_create(thread_t *thread, thread_attr_t *attr, int priority, void *(*s
     }
 
     pid = clone((int(*)(void*))(*start_routine), (char*)stack + STACK_SIZE, CLONE_FLAG, arg);
-    printf("Thread %d created\n", pid);
+    //printf("Thread %d created\n", pid);
     kill(pid, SIGSTOP);
     
     tcb->stackSize = STACK_SIZE;
@@ -224,15 +224,12 @@ thread_t thread_self()
 
 int thread_exit(void* retval){
     Thread* target = pThreadTblEnt[TableSearch_Thread(getpid())].pThread;
-
     if(target == NULL)
         return -1;
 
-    target->exitCode = *((int*)retval);
-    
-    InsertToWaitQueue(0, target);
+    target->exitCode = ((int*)retval);
+    InsertToWaitQueue(target);
     target->status = THREAD_STATUS_ZOMBIE;
-
     if(IsReadyQueueEmpty()){
         pCurrentThread = NULL;
     }
@@ -241,6 +238,7 @@ int thread_exit(void* retval){
         pCurrentThread->status = THREAD_STATUS_RUN;
         kill(pCurrentThread->pid, SIGCONT);
     }
+    //printf("%d is exited\n", getpid());
     exit(0);
     return 0;
 }

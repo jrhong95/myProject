@@ -86,23 +86,23 @@ Thread* DeleleToReadyQueue(int priority, pid_t pid){ //pid == 0, Delete Head
     }
 }
 
-// void InsertToWaitQueue(Thread *tcb){
+void InsertToWaitQueue(Thread *tcb){
     
-//     //If List is Empty
-//     if(pWaitingQueueHead == NULL){
-//         pWaitingQueueHead = tcb;
-//         pWaitingQueueTail = tcb;
-//         tcb->phNext = NULL;
-//         tcb->phPrev = NULL;
-//         tcb->status = THREAD_STATUS_WAIT;
-//     }
-//     else{//insert to Tail
-//         tcb->phPrev = pWaitingQueueTail;
-//         pWaitingQueueTail->phNext = tcb;
-//         pWaitingQueueTail = tcb;
-//         tcb->status = THREAD_STATUS_WAIT;
-//     }
-// }
+    //If List is Empty
+    if(pWaitingQueueHead == NULL){
+        pWaitingQueueHead = tcb;
+        pWaitingQueueTail = tcb;
+        tcb->phNext = NULL;
+        tcb->phPrev = NULL;
+        tcb->status = THREAD_STATUS_WAIT;
+    }
+    else{//insert to Tail
+        tcb->phPrev = pWaitingQueueTail;
+        pWaitingQueueTail->phNext = tcb;
+        pWaitingQueueTail = tcb;
+        tcb->status = THREAD_STATUS_WAIT;
+    }
+}
 
 // Thread* DeleteToWaitQueueHead(int mqd){
 //     //list empty
@@ -132,7 +132,7 @@ Thread* DeleleToReadyQueue(int priority, pid_t pid){ //pid == 0, Delete Head
 *   mqd와 Thread 객체를 입력받아 mqd에 해당하는 테이블의 waitQueue에 Thread 삽입
 *   waitQueue count++, Thread 상태 wait
 */
-void InsertToWaitQueue(int mqd, Thread *tcb){
+void InsertToQcbWaitQueue(int mqd, Thread *tcb){
     Qcb *curQcb = qcbTblEntry[mqd].pQcb;
     //If List is Empty
     if(curQcb->pWaitQHead == NULL){

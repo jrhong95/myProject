@@ -84,7 +84,7 @@ int pmq_send(pmqd_t mqd, char* msg_ptr, size_t msg_len, unsigned int msg_prio)
     newMsg->size = msg_len;
     newMsg->pNext = NULL;
     newMsg->pPrev = NULL;
-
+    //printf("(%d) send message\n", getpid());
     //insert to Qcb's msg list
     qcbTblEntry[mqd].pQcb->msgCount++;
     if(qcbTblEntry[mqd].pQcb->pMsgHead == NULL){    //MsgList is empty
@@ -125,15 +125,15 @@ int pmq_send(pmqd_t mqd, char* msg_ptr, size_t msg_len, unsigned int msg_prio)
 ssize_t pmq_receive(pmqd_t mqd, char* msg_ptr, size_t msg_len, unsigned int* msg_prio)
 {
     Message *curMsg;
-    pid_t tid = thread_self();
+    thread_t tid = thread_self();
     Thread *curThread = pThreadTblEnt[tid].pThread;
     int retVal;
-
-    if(qcbTblEntry[mqd].pQcb->msgCount == 0){    //msqList가 비어있는 경우
+    //printf("(%d) cur Count: %d\n", getpid(), qcbTblEntry[mqd].pQcb->msgCount);
+    while(qcbTblEntry[mqd].pQcb->msgCount == 0){    //msqList가 비어있는 경우
         //sigstop
-        //printf("Test1\n");
+        //printf("(%d) receive blocked\n", getpid());
         //DeleleToReadyQueue(curThread->priority, curThread->pid);
-        InsertToWaitQueue(mqd, curThread);
+        InsertToQcbWaitQueue(mqd, curThread);
         pCurrentThread = FindNextinReadyQueue();
         pCurrentThread->status = THREAD_STATUS_RUN;
         //printf("%d is current head\n", pCurrentThread->pid);
@@ -141,7 +141,7 @@ ssize_t pmq_receive(pmqd_t mqd, char* msg_ptr, size_t msg_len, unsigned int* msg
         kill(getpid(), SIGSTOP);
     }
 
-    //printf("Test2\n");
+    //printf("(%d) message received\n", getpid() );
     
     curMsg = qcbTblEntry[mqd].pQcb->pMsgHead;
     strcpy(msg_ptr, curMsg->data);
