@@ -51,7 +51,6 @@ void* Tc4ThreadPong(void* param)
 	for(i=1;i<=5;i++){
 		memset(msg,0,MAX_MSG_LEN);
 		pmq_receive(mq1,msg,MAX_MSG_LEN,&msg_prio);
-		//printf("(%d) mq2 curMsgPrio : %d \n", getpid(),msg_prio);
 		flag[msg[0]-48]++;
 		memset(msg,0,MAX_MSG_LEN);
 		sprintf(msg,"%d",*((int*)param));

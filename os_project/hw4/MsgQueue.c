@@ -52,14 +52,14 @@ int pmq_close(pmqd_t mqd)
     else{
         qcbTblEntry[mqd].openCount--;//Qcb count -1
     }
-    // else{                           //Qcb초기화
-    //     qcbTblEntry[mqd].openCount = 0;
-    //     free(qcbTblEntry[mqd].pQcb);
-    //     qcbTblEntry[mqd].pQcb = NULL;
-    //     strcpy(qcbTblEntry[mqd].name, "");
-    //     qcbTblEntry[mqd].mode = 0;
-    //     qcbTblEntry[mqd].bUsed = 0;
-    // }
+    if(qcbTblEntry[mqd].openCount == 0 && qcbTblEntry[mqd].pQcb->msgCount == 0 && qcbTblEntry[mqd].pQcb->waitThreadCount == 0){                           //Qcb초기화
+        qcbTblEntry[mqd].openCount = 0;
+        free(qcbTblEntry[mqd].pQcb);
+        qcbTblEntry[mqd].pQcb = NULL;
+        strcpy(qcbTblEntry[mqd].name, "");
+        qcbTblEntry[mqd].mode = 0;
+        qcbTblEntry[mqd].bUsed = 0;
+    }
     return 0;
 }
 int pmq_send(pmqd_t mqd, char* msg_ptr, size_t msg_len, unsigned int msg_prio)
