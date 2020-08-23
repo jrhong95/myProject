@@ -1,1 +1,1 @@
-# myProjectmy first git repo
+# Sehwa Hong 3-1 homework repo
