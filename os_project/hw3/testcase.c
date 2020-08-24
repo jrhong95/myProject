@@ -278,7 +278,7 @@ void TestCase4(void)
 			memset(pBuffer, 0, 1024);
 			strcpy(pBuffer, fileName);
 			WriteFile(fd, pBuffer, 513);
-			WriteFile(fd, pBuffer, 513);
+			//WriteFile(fd, pBuffer, 513);
 			CloseFile(fd);
 		}
 	}
